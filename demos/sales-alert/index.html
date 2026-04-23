@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>日次売上アラート通知システム | デモ</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --navy:   #1A2B4A;
+    --blue:   #3A7BD5;
+    --orange: #F5A623;
+    --green:  #22c55e;
+    --red:    #ef4444;
+    --yellow: #f59e0b;
+    --bg:     #F0F4F8;
+    --white:  #fff;
+    --card-shadow: 0 2px 12px rgba(26,43,74,.1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Hiragino Maru Gothic ProN','Yu Gothic',sans-serif; background: var(--bg); color: var(--navy); }
+
+  /* ─── HEADER ─── */
+  .header { background: var(--navy); color: #fff; padding: 0.9rem 1.4rem; display: flex; align-items: center; justify-content: space-between; }
+  .header-left { display: flex; align-items: center; gap: 0.8rem; }
+  .header-icon { font-size: 1.5rem; }
+  .header h1 { font-size: 1rem; font-weight: 700; }
+  .header p  { font-size: 0.72rem; color: rgba(255,255,255,.6); margin-top: 2px; }
+  .header-time { font-size: 0.78rem; color: rgba(255,255,255,.7); text-align: right; }
+  .header-time b { display: block; font-size: 1.1rem; color: #fff; }
+  .demo-notice { background: #FFF7E0; border-bottom: 2px solid var(--orange); text-align: center; font-size: 0.72rem; color: #7a5000; padding: 0.4rem; }
+
+  /* ─── LAYOUT ─── */
+  .container { max-width: 960px; margin: 0 auto; padding: 1.2rem; }
+
+  /* ─── KPI CARDS ─── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.2rem; }
+  .kpi-card { background: var(--white); border-radius: 12px; padding: 1.1rem 1.2rem; box-shadow: var(--card-shadow); border-top: 4px solid var(--blue); }
+  .kpi-card.danger  { border-top-color: var(--red); }
+  .kpi-card.warning { border-top-color: var(--yellow); }
+  .kpi-card.ok      { border-top-color: var(--green); }
+  .kpi-label { font-size: 0.72rem; color: #6b7a99; font-weight: 600; margin-bottom: 0.4rem; }
+  .kpi-value { font-size: 1.6rem; font-weight: 900; color: var(--navy); line-height: 1; }
+  .kpi-value small { font-size: 0.75rem; font-weight: 400; color: #6b7a99; }
+  .kpi-diff { font-size: 0.78rem; margin-top: 0.4rem; font-weight: 700; }
+  .kpi-diff.up   { color: var(--green); }
+  .kpi-diff.down { color: var(--red); }
+  .kpi-diff.warn { color: var(--yellow); }
+
+  /* ─── CHART ─── */
+  .card { background: var(--white); border-radius: 12px; padding: 1.2rem; box-shadow: var(--card-shadow); margin-bottom: 1.2rem; }
+  .card-title { font-size: 0.85rem; font-weight: 700; color: var(--navy); margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
+  .card-title span { font-weight: 400; font-size: 0.72rem; color: #6b7a99; }
+
+  /* ─── DEPT TABLE ─── */
+  .dept-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .dept-table th { background: var(--bg); padding: 0.5rem 0.8rem; text-align: left; font-size: 0.72rem; color: #6b7a99; border-bottom: 2px solid #dce6f0; }
+  .dept-table td { padding: 0.6rem 0.8rem; border-bottom: 1px solid #eef1f7; }
+  .dept-table tr:last-child td { border-bottom: none; }
+  .progress-bar { height: 8px; background: #e8eef8; border-radius: 999px; overflow: hidden; width: 100%; min-width: 80px; }
+  .progress-bar-fill { height: 100%; border-radius: 999px; transition: width .4s; }
+  .status-badge { font-size: 0.68rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 999px; white-space: nowrap; }
+  .status-ok      { background: #dcfce7; color: #15803d; }
+  .status-warn    { background: #fef3c7; color: #92400e; }
+  .status-danger  { background: #fee2e2; color: #991b1b; }
+
+  /* ─── ALERT PANEL ─── */
+  .alert-panel { background: var(--white); border-radius: 12px; padding: 1.2rem; box-shadow: var(--card-shadow); margin-bottom: 1.2rem; }
+  .alert-panel-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 0.8rem; display: flex; align-items: center; gap: 0.5rem; }
+  .alert-log { display: flex; flex-direction: column; gap: 0.6rem; max-height: 200px; overflow-y: auto; }
+  .alert-item { display: flex; align-items: flex-start; gap: 0.7rem; padding: 0.7rem 0.9rem; border-radius: 10px; font-size: 0.8rem; animation: slideIn .3s ease; }
+  @keyframes slideIn { from { opacity:0; transform:translateX(-10px); } to { opacity:1; transform:translateX(0); } }
+  .alert-item.danger  { background: #fff1f1; border-left: 3px solid var(--red); }
+  .alert-item.warning { background: #fffbeb; border-left: 3px solid var(--yellow); }
+  .alert-item.ok      { background: #f0fdf4; border-left: 3px solid var(--green); }
+  .alert-icon { font-size: 1.1rem; flex-shrink: 0; }
+  .alert-text { flex: 1; }
+  .alert-text b { display: block; margin-bottom: 2px; }
+  .alert-time { font-size: 0.68rem; color: #6b7a99; margin-top: 2px; }
+
+  /* ─── LINE通知シミュレーション ─── */
+  .line-sim-wrap { position: relative; }
+  .line-toast {
+    position: fixed; top: 80px; right: 20px; z-index: 999;
+    background: #06C755; color: #fff; border-radius: 16px; padding: 0; width: 280px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.25); overflow: hidden;
+    transform: translateX(320px); transition: transform .4s cubic-bezier(.34,1.56,.64,1);
+  }
+  .line-toast.show { transform: translateX(0); }
+  .line-toast-header { background: rgba(0,0,0,.15); padding: 0.5rem 0.9rem; font-size: 0.72rem; display: flex; align-items: center; gap: 0.5rem; }
+  .line-toast-header img { width: 18px; height: 18px; border-radius: 50%; background: #fff; }
+  .line-toast-body { padding: 0.9rem; }
+  .line-toast-body .store { font-size: 0.72rem; opacity: .8; margin-bottom: 4px; }
+  .line-toast-body .msg { font-size: 0.88rem; font-weight: 700; line-height: 1.5; }
+  .line-toast-body .detail { font-size: 0.72rem; margin-top: 6px; opacity: .9; }
+
+  /* ─── CONTROLS ─── */
+  .controls { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-bottom: 1.2rem; align-items: center; }
+  .ctrl-label { font-size: 0.78rem; color: #6b7a99; font-weight: 600; }
+  .btn { padding: 0.5rem 1.2rem; border-radius: 999px; font-size: 0.82rem; font-weight: 700; cursor: pointer; border: 2px solid; font-family: inherit; transition: all .15s; }
+  .btn-primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .btn-primary:hover { background: #2a5fb5; }
+  .btn-danger  { background: var(--red);  color: #fff; border-color: var(--red); }
+  .btn-danger:hover  { background: #c92e2e; }
+  .btn-outline { background: #fff; color: var(--navy); border-color: #c5d5f0; }
+  .btn-outline:hover { background: var(--bg); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-icon">📈</div>
+    <div>
+      <h1>日次売上アラート通知システム</h1>
+      <p>大森中店 — リアルタイム売上モニタリング</p>
+    </div>
+  </div>
+  <div class="header-time">
+    <span>最終更新</span>
+    <b id="clock">--:--:--</b>
+  </div>
+</div>
+<div class="demo-notice">※ デモ用サンプルデータです。「アラート発火シミュ」ボタンでLINE通知の動作を確認できます。</div>
+
+<div class="container">
+
+  <!-- KPI -->
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <span class="ctrl-label">シミュレーション：</span>
+    <button class="btn btn-danger" onclick="triggerAlert()">🚨 アラート発火シミュ</button>
+    <button class="btn btn-primary" onclick="triggerRecovery()">✅ 目標回復シミュ</button>
+    <button class="btn btn-outline" onclick="resetDemo()">🔄 リセット</button>
+  </div>
+
+  <!-- CHART -->
+  <div class="card">
+    <div class="card-title">
+      時間別売上推移（本日）
+      <span>目標ライン ─── 実績 ───</span>
+    </div>
+    <canvas id="salesChart" height="100"></canvas>
+  </div>
+
+  <!-- DEPT TABLE -->
+  <div class="card">
+    <div class="card-title">部門別実績</div>
+    <table class="dept-table" id="deptTable"></table>
+  </div>
+
+  <!-- ALERT LOG -->
+  <div class="alert-panel">
+    <div class="alert-panel-title">🔔 アラートログ</div>
+    <div class="alert-log" id="alertLog">
+      <div class="alert-item ok"><div class="alert-icon">✅</div><div class="alert-text"><b>システム起動</b>モニタリングを開始しました<div class="alert-time" id="startTime"></div></div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- LINE通知トースト -->
+<div class="line-toast" id="lineToast">
+  <div class="line-toast-header">
+    <span style="font-size:1rem">💬</span> LINE通知 — 大森中店アラート
+  </div>
+  <div class="line-toast-body">
+    <div class="store">大森中店 売上管理システム</div>
+    <div class="msg" id="toastMsg">🚨 売上アラート発生</div>
+    <div class="detail" id="toastDetail"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  データ
+// ══════════════════════════════════════════
+const HOURS = ['9','10','11','12','13','14','15','16','17','18','19','20','21'];
+const TARGET_HOURLY = [85,120,110,180,130,115,120,140,160,195,180,150,90]; // 万円
+const ACTUAL_BASE   = [88,125,108,172,138,112,118,143,155,180,174,148,88];
+
+const DEPTS = [
+  { name:'青果',     target:180, actual:172, icon:'🥦' },
+  { name:'精肉',     target:220, actual:235, icon:'🥩' },
+  { name:'鮮魚',     target:160, actual:141, icon:'🐟' },
+  { name:'惣菜',     target:280, actual:268, icon:'🍱' },
+  { name:'日配',     target:190, actual:197, icon:'🥛' },
+  { name:'グロサリー', target:310, actual:288, icon:'🛒' },
+];
+
+let actualData = [...ACTUAL_BASE];
+let chart;
+let alertMode = false;
+
+// ══════════════════════════════════════════
+//  時計
+// ══════════════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('ja-JP');
+}
+setInterval(updateClock, 1000);
+updateClock();
+document.getElementById('startTime').textContent = new Date().toLocaleTimeString('ja-JP');
+
+// ══════════════════════════════════════════
+//  KPI計算
+// ══════════════════════════════════════════
+function calcKPI() {
+  const totalTarget = TARGET_HOURLY.reduce((a,b)=>a+b, 0);
+  const totalActual = actualData.reduce((a,b)=>a+b, 0);
+  const rate = Math.round(totalActual / totalTarget * 100);
+  const diff  = totalActual - totalTarget;
+  const clientsTarget = 1240;
+  const clientsActual = alertMode ? 1108 : 1192;
+  const clientRate = Math.round(clientsActual / clientsTarget * 100);
+  return { totalTarget, totalActual, rate, diff, clientsTarget, clientsActual, clientRate };
+}
+
+function renderKPI() {
+  const { totalTarget, totalActual, rate, diff, clientsActual, clientRate } = calcKPI();
+  const diffStr = (diff >= 0 ? '+' : '') + diff.toLocaleString();
+  const kpiData = [
+    { label:'本日売上（累計）', value:`¥${totalActual.toLocaleString()}`, unit:'万円', diff: diffStr+'万円', up: diff >= 0, cls: rate>=95?'ok':rate>=85?'warning':'danger' },
+    { label:'目標達成率', value:rate, unit:'%', diff: diff>=0?'目標超過中':'目標まで '+(Math.abs(diff))+'万円', up: diff>=0, cls: rate>=95?'ok':rate>=85?'warning':'danger' },
+    { label:'客数（累計）', value:clientsActual.toLocaleString(), unit:'人', diff:(clientRate>=100?'+':'')+(clientsActual-1240)+'人', up:clientsActual>=1240, cls:clientRate>=95?'ok':clientRate>=85?'warning':'danger' },
+    { label:'客単価', value:'¥'+Math.round(totalActual*10000/clientsActual).toLocaleString(), unit:'円', diff: totalActual*10000/clientsActual >= 9800 ? '基準値以上':'基準値以下', up: totalActual*10000/clientsActual>=9800, cls:'ok' },
+  ];
+  document.getElementById('kpiGrid').innerHTML = kpiData.map(k=>`
+    <div class="kpi-card ${k.cls}">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.value} <small>${k.unit}</small></div>
+      <div class="kpi-diff ${k.up?'up':'down'}">${k.up?'▲':'▼'} ${k.diff}</div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════
+//  チャート
+// ══════════════════════════════════════════
+function initChart() {
+  const ctx = document.getElementById('salesChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: HOURS.map(h=>h+'時'),
+      datasets: [
+        { label:'実績（万円）', data: actualData, backgroundColor: actualData.map((v,i)=>v>=TARGET_HOURLY[i]?'rgba(34,197,94,.7)':'rgba(239,68,68,.7)'), borderRadius: 6, order:2 },
+        { label:'目標（万円）', data: TARGET_HOURLY, type:'line', borderColor:'#F5A623', borderWidth:2.5, pointRadius:3, fill:false, tension:0.3, order:1 },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend:{ labels:{ font:{ family:'Hiragino Maru Gothic ProN,Yu Gothic,sans-serif', size:11 } } } },
+      scales: {
+        y: { beginAtZero:true, ticks:{ callback:v=>v+'万' } },
+        x: { grid:{ display:false } }
+      }
+    }
+  });
+}
+
+function updateChart() {
+  chart.data.datasets[0].data = actualData;
+  chart.data.datasets[0].backgroundColor = actualData.map((v,i)=>v>=TARGET_HOURLY[i]?'rgba(34,197,94,.7)':'rgba(239,68,68,.7)');
+  chart.update();
+}
+
+// ══════════════════════════════════════════
+//  部門テーブル
+// ══════════════════════════════════════════
+function renderDeptTable(alertDepts) {
+  const table = document.getElementById('deptTable');
+  const deptData = DEPTS.map((d,i) => ({
+    ...d,
+    actual: alertDepts && alertDepts[i] ? Math.round(d.target * (alertDepts[i]/100)) : d.actual
+  }));
+  table.innerHTML = `
+    <thead><tr><th>部門</th><th>目標(万)</th><th>実績(万)</th><th>達成率</th><th>進捗</th><th>状態</th></tr></thead>
+    <tbody>
+    ${deptData.map(d=>{
+      const rate = Math.round(d.actual/d.target*100);
+      const cls = rate>=95?'ok':rate>=85?'warn':'danger';
+      const label = rate>=95?'達成圏内':rate>=85?'要注意':'⚠ 要対応';
+      const color = rate>=95?'#22c55e':rate>=85?'#f59e0b':'#ef4444';
+      return `<tr>
+        <td>${d.icon} ${d.name}</td>
+        <td>¥${d.target}</td>
+        <td>¥${d.actual}</td>
+        <td style="font-weight:700;color:${color}">${rate}%</td>
+        <td style="width:100px"><div class="progress-bar"><div class="progress-bar-fill" style="width:${Math.min(rate,100)}%;background:${color}"></div></div></td>
+        <td><span class="status-badge status-${cls}">${label}</span></td>
+      </tr>`;
+    }).join('')}
+    </tbody>`;
+}
+
+// ══════════════════════════════════════════
+//  アラートログ追加
+// ══════════════════════════════════════════
+function addAlert(type, title, body) {
+  const log = document.getElementById('alertLog');
+  const time = new Date().toLocaleTimeString('ja-JP');
+  const icons = { danger:'🚨', warning:'⚠️', ok:'✅' };
+  const el = document.createElement('div');
+  el.className = `alert-item ${type}`;
+  el.innerHTML = `<div class="alert-icon">${icons[type]}</div><div class="alert-text"><b>${title}</b>${body}<div class="alert-time">${time}</div></div>`;
+  log.insertBefore(el, log.firstChild);
+}
+
+// ══════════════════════════════════════════
+//  LINE通知トースト
+// ══════════════════════════════════════════
+function showLineToast(msg, detail) {
+  document.getElementById('toastMsg').innerHTML = msg;
+  document.getElementById('toastDetail').textContent = detail;
+  const toast = document.getElementById('lineToast');
+  toast.classList.add('show');
+  setTimeout(()=>toast.classList.remove('show'), 5000);
+}
+
+// ══════════════════════════════════════════
+//  シミュレーション
+// ══════════════════════════════════════════
+function triggerAlert() {
+  alertMode = true;
+  actualData = ACTUAL_BASE.map((v,i)=>i>=7 ? Math.round(v*0.76) : v);
+  updateChart();
+  renderKPI();
+  renderDeptTable([100,100,72,85,100,78]);
+  addAlert('danger','売上アラート発火','本日17時以降の売上が目標を大幅に下回っています（達成率81%）');
+  addAlert('warning','鮮魚部門 警告','鮮魚部門の達成率が72%に低下。廃棄・在庫状況を確認してください。');
+  showLineToast(
+    '🚨 売上アラート — 大森中店',
+    '現時点達成率: 81% (-19%)\n鮮魚・グロサリー部門が目標を大きく下回っています。早急に対応を確認してください。'
+  );
+}
+
+function triggerRecovery() {
+  alertMode = false;
+  actualData = [...ACTUAL_BASE];
+  updateChart();
+  renderKPI();
+  renderDeptTable(null);
+  addAlert('ok','売上回復','全部門の売上が目標水準に回復しました。アラートを解除します。');
+  showLineToast('✅ 売上回復 — 大森中店', '全部門が目標水準に回復しました。');
+}
+
+function resetDemo() {
+  alertMode = false;
+  actualData = [...ACTUAL_BASE];
+  updateChart();
+  renderKPI();
+  renderDeptTable(null);
+  document.getElementById('alertLog').innerHTML = `<div class="alert-item ok"><div class="alert-icon">✅</div><div class="alert-text"><b>システム起動</b>モニタリングを開始しました<div class="alert-time">${new Date().toLocaleTimeString('ja-JP')}</div></div></div>`;
+}
+
+// ══════════════════════════════════════════
+//  初期化
+// ══════════════════════════════════════════
+renderKPI();
+initChart();
+renderDeptTable(null);
+</script>
+</body>
+</html>

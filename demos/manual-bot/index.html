@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>新人マニュアル案内ボット | デモ</title>
+<style>
+  :root {
+    --primary: #1A2B4A;
+    --blue: #3A7BD5;
+    --orange: #F5A623;
+    --bg: #F0F4F8;
+    --white: #fff;
+    --bot-bg: #EEF3FB;
+    --user-bg: #3A7BD5;
+    --border: #D8E3F0;
+    --text: #1A2B4A;
+    --muted: #6B7A99;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Hiragino Maru Gothic ProN','Yu Gothic',sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
+
+  /* ─── HEADER ─── */
+  .header {
+    background: var(--primary); color: var(--white);
+    padding: 0.9rem 1.2rem; display: flex; align-items: center; gap: 0.8rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,.2); flex-shrink: 0;
+  }
+  .header-avatar {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue), #5b9cf6);
+    display: flex; align-items: center; justify-content: center; font-size: 1.3rem;
+  }
+  .header-info h1 { font-size: 0.95rem; font-weight: 700; }
+  .header-info p  { font-size: 0.72rem; color: rgba(255,255,255,.6); margin-top: 1px; }
+  .header-badge { margin-left: auto; background: #22c55e; color: #fff; font-size: 0.65rem; font-weight: 700; padding: 0.25rem 0.6rem; border-radius: 999px; }
+  .demo-notice { background: #FFF7E0; border-bottom: 2px solid var(--orange); text-align: center; font-size: 0.72rem; color: #7a5000; padding: 0.4rem; flex-shrink: 0; }
+
+  /* ─── CHAT ─── */
+  .chat-area { flex: 1; overflow-y: auto; padding: 1.2rem 1rem; display: flex; flex-direction: column; gap: 1rem; }
+  .msg { display: flex; gap: 0.6rem; max-width: 88%; animation: fadeIn .2s ease; }
+  .msg.bot  { align-self: flex-start; }
+  .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  .msg-avatar {
+    width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--blue), #5b9cf6);
+    display: flex; align-items: center; justify-content: center; font-size: 1rem; margin-top: 2px;
+  }
+  .msg-bubble {
+    padding: 0.75rem 1rem; border-radius: 16px; font-size: 0.88rem; line-height: 1.7;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+  .msg.bot  .msg-bubble { background: var(--white); border-radius: 4px 16px 16px 16px; color: var(--text); }
+  .msg.user .msg-bubble { background: var(--user-bg); border-radius: 16px 4px 16px 16px; color: #fff; }
+  .msg-bubble b { color: var(--blue); }
+  .msg.user .msg-bubble b { color: #b3d4ff; }
+  .msg-bubble ul { padding-left: 1.2rem; margin-top: 0.4rem; }
+  .msg-bubble li { margin-bottom: 0.2rem; }
+  .msg-bubble .step { background: var(--bot-bg); border-left: 3px solid var(--blue); padding: 0.5rem 0.7rem; border-radius: 0 8px 8px 0; margin-top: 0.5rem; font-size: 0.82rem; }
+  .typing { display: flex; gap: 4px; padding: 0.6rem 0.8rem; }
+  .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: bounce .9s infinite; }
+  .typing span:nth-child(2) { animation-delay: .15s; }
+  .typing span:nth-child(3) { animation-delay: .30s; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+
+  /* ─── QUICK REPLIES ─── */
+  .quick-wrap { padding: 0 1rem 0.6rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .quick-btn {
+    background: var(--white); border: 1.5px solid var(--blue); color: var(--blue);
+    font-size: 0.78rem; padding: 0.4rem 0.9rem; border-radius: 999px; cursor: pointer;
+    font-family: inherit; transition: background .15s, color .15s;
+  }
+  .quick-btn:hover { background: var(--blue); color: #fff; }
+
+  /* ─── CATEGORY TABS ─── */
+  .cat-tabs { padding: 0 1rem 0.8rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .cat-tab {
+    background: var(--white); border: 1.5px solid var(--border); color: var(--muted);
+    font-size: 0.75rem; padding: 0.35rem 0.8rem; border-radius: 8px; cursor: pointer;
+    font-family: inherit; transition: all .15s;
+  }
+  .cat-tab:hover, .cat-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  /* ─── INPUT ─── */
+  .input-area {
+    background: var(--white); border-top: 1px solid var(--border);
+    padding: 0.8rem 1rem; display: flex; gap: 0.6rem; flex-shrink: 0;
+  }
+  .input-area input {
+    flex: 1; border: 1.5px solid var(--border); border-radius: 999px;
+    padding: 0.6rem 1rem; font-size: 0.88rem; font-family: inherit; outline: none;
+    transition: border-color .2s;
+  }
+  .input-area input:focus { border-color: var(--blue); }
+  .send-btn {
+    background: var(--blue); color: #fff; border: none; border-radius: 50%;
+    width: 40px; height: 40px; cursor: pointer; font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    transition: background .2s;
+  }
+  .send-btn:hover { background: #2a5fb5; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-avatar">🤖</div>
+  <div class="header-info">
+    <h1>マニュアル案内ボット</h1>
+    <p>大森中店 新人サポートAI</p>
+  </div>
+  <div class="header-badge">● オンライン</div>
+</div>
+<div class="demo-notice">※ これはデモ用サンプルです。実際の導入時は自社マニュアルに合わせてカスタマイズします。</div>
+
+<div class="chat-area" id="chatArea"></div>
+
+<div class="cat-tabs" id="catTabs">
+  <button class="cat-tab active" onclick="filterCat('all')">すべて</button>
+  <button class="cat-tab" onclick="filterCat('register')">レジ操作</button>
+  <button class="cat-tab" onclick="filterCat('order')">発注・在庫</button>
+  <button class="cat-tab" onclick="filterCat('shift')">勤怠・シフト</button>
+  <button class="cat-tab" onclick="filterCat('hygiene')">衛生・鮮度</button>
+  <button class="cat-tab" onclick="filterCat('claim')">クレーム</button>
+  <button class="cat-tab" onclick="filterCat('other')">その他</button>
+</div>
+<div class="quick-wrap" id="quickWrap"></div>
+<div class="input-area">
+  <input type="text" id="userInput" placeholder="質問を入力してください（例：レジの締め方は？）" />
+  <button class="send-btn" onclick="sendMsg()">➤</button>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  知識ベース
+// ══════════════════════════════════════════
+const KB = [
+  // ── レジ操作 ──
+  { cat:'register', keywords:['レジ','開設','開始','始め'],
+    q:'レジの開設方法は？',
+    a:`<b>レジ開設の手順</b>
+<div class="step">① 担当レジ番号を確認する</div>
+<div class="step">② キャビネットから担当ドロアーを取り出す</div>
+<div class="step">③ POSに社員番号を入力してログイン</div>
+<div class="step">④ 開設ボタン → 釣り銭確認（¥30,000）</div>
+<div class="step">⑤ 「開設完了」ランプが点灯したら準備OK</div>
+不明な点は近くのリーダーにすぐ声をかけてください。` },
+
+  { cat:'register', keywords:['レジ','締め','精算','終了','閉設'],
+    q:'レジの締め方は？',
+    a:`<b>レジ精算・締め手順</b>
+<div class="step">① 担当チーフに「締め」の許可を取る</div>
+<div class="step">② 「精算」ボタン → 現金・カード別に集計印字</div>
+<div class="step">③ ドロアーの現金を数えて伝票と照合</div>
+<div class="step">④ 過不足がある場合は必ずチーフへ報告</div>
+<div class="step">⑤ ドロアーをキャビネットへ返却・施錠</div>
+金額が合わない場合でも、一人で抱え込まずすぐ報告してください。` },
+
+  { cat:'register', keywords:['カード','クレジット','電子マネー','suica','paypay'],
+    q:'カード・電子マネーの操作は？',
+    a:`<b>キャッシュレス決済の操作</b>
+合計金額を確定後、端末の「カード/電子マネー」ボタンを押してお客様に端末をお渡しします。
+<ul>
+<li>クレジット：サインまたはPINを確認</li>
+<li>Suica/交通系：タッチ後に「ピッ」を確認</li>
+<li>QRコード（PayPay等）：お客様の画面をスキャン</li>
+</ul>
+エラーが出た場合はキャンセルせず、すぐにチーフを呼んでください。` },
+
+  // ── 発注・在庫 ──
+  { cat:'order', keywords:['発注','注文','オーダー','在庫'],
+    q:'発注の方法は？',
+    a:`<b>商品発注の手順</b>
+<div class="step">① ハンディターミナルで商品バーコードをスキャン</div>
+<div class="step">② 現在の在庫数を確認・入力</div>
+<div class="step">③ 発注数を入力（上限・最小ロットに注意）</div>
+<div class="step">④ 送信ボタンを押して完了</div>
+<div class="step">⑤ 発注締切：午前10時（翌日納品分）</div>
+初めて発注する商品はチーフに確認を取ってから行ってください。` },
+
+  { cat:'order', keywords:['欠品','品切れ','ない','補充'],
+    q:'欠品が出たときはどうする？',
+    a:`<b>欠品発生時の対応</b>
+<ul>
+<li>バックルームに在庫があれば即補充</li>
+<li>在庫なし → ハンディで欠品登録（理由も入力）</li>
+<li>売場に「入荷待ち」プレートを立てる</li>
+<li>翌日発注分に数量追加</li>
+</ul>
+欠品が続く場合はチーフへ報告し、発注数の見直しを依頼してください。` },
+
+  { cat:'order', keywords:['値引き','見切り','廃棄','鮮度','期限'],
+    q:'値引き・廃棄の手順は？',
+    a:`<b>値引き・廃棄の流れ</b>
+<div class="step">① 担当チーフが対象商品を選定</div>
+<div class="step">② 値引きシールを貼付（20%・30%・50%）</div>
+<div class="step">③ 廃棄品は廃棄BOXへ入れ伝票に記入</div>
+<div class="step">④ 廃棄伝票は当日中に事務所へ提出</div>
+勝手に値引き・廃棄は禁止です。必ずチーフの指示を受けてください。` },
+
+  // ── 勤怠・シフト ──
+  { cat:'shift', keywords:['打刻','出勤','退勤','タイムカード'],
+    q:'打刻の方法は？',
+    a:`<b>出退勤の打刻方法</b>
+<div class="step">① 更衣室で制服に着替える</div>
+<div class="step">② 入口のタイムレコーダーに社員証をかざす</div>
+<div class="step">③ 「ピッ」と音がしたら打刻完了</div>
+<div class="step">④ 退勤時も必ず打刻（忘れると給与計算に影響）</div>
+打刻忘れに気づいたら当日中に責任者へ報告してください。` },
+
+  { cat:'shift', keywords:['休み','欠勤','遅刻','シフト','変更'],
+    q:'欠勤・遅刻の連絡先は？',
+    a:`<b>当日欠勤・遅刻の連絡</b>
+<ul>
+<li>出勤予定時刻の<b>1時間前まで</b>に連絡</li>
+<li>連絡先：店舗代表番号（バックヤードポスター参照）</li>
+<li>担当チーフが不在の場合は副店長へ</li>
+<li>LINE連絡は原則不可（電話のみ）</li>
+</ul>
+無断欠勤はシフト全体に迷惑がかかります。体調不良でも必ず連絡を。` },
+
+  { cat:'shift', keywords:['休憩','ブレイク','昼','食事'],
+    q:'休憩はいつ取れる？',
+    a:`<b>休憩のルール</b>
+<ul>
+<li>6時間以上：45分休憩（法律上の義務）</li>
+<li>8時間以上：60分休憩</li>
+<li>休憩時間はシフト表に記載あり</li>
+<li>バックルームの休憩室を使用</li>
+</ul>
+繁忙時間帯は前後にずれることがあります。チーフの指示に従ってください。` },
+
+  // ── 衛生・鮮度 ──
+  { cat:'hygiene', keywords:['衛生','手洗い','消毒','ハンド'],
+    q:'衛生管理で気をつけることは？',
+    a:`<b>衛生管理の基本ルール</b>
+<ul>
+<li>出勤時・休憩後は必ず手洗い＋消毒</li>
+<li>食品に触れる前後は必ず手洗い</li>
+<li>爪は短く切り、マニキュア禁止</li>
+<li>体調不良（発熱・下痢）は即申告して食品作業NG</li>
+</ul>
+食中毒は店全体の問題になります。体調管理は自己管理の基本です。` },
+
+  { cat:'hygiene', keywords:['温度','冷蔵','冷凍','チェック'],
+    q:'温度チェックの方法は？',
+    a:`<b>温度管理チェック</b>
+<div class="step">① 朝・昼・夕の1日3回実施</div>
+<div class="step">② 各ケース前面の温度計を記録用紙に記入</div>
+<div class="step">③ 冷蔵: 0〜10℃ / 冷凍: -18℃以下が基準</div>
+<div class="step">④ 基準外の場合は即チーフへ報告</div>
+温度管理の記録は保健所の確認対象です。必ず正確に記入してください。` },
+
+  // ── クレーム ──
+  { cat:'claim', keywords:['クレーム','苦情','怒','対応','お客様'],
+    q:'クレームが来たときの対応は？',
+    a:`<b>クレーム初期対応の流れ</b>
+<div class="step">① まず「申し訳ございません」と謝罪</div>
+<div class="step">② お客様の話を遮らずに最後まで聞く</div>
+<div class="step">③ 内容をメモに取る</div>
+<div class="step">④ 「担当者を呼んでまいります」とチーフへ引き継ぐ</div>
+新人のうちは<b>一人で解決しようとしない</b>ことが大切です。すぐに先輩を呼びましょう。` },
+
+  // ── その他 ──
+  { cat:'other', keywords:['制服','ユニフォーム','ロッカー'],
+    q:'制服・ロッカーの使い方は？',
+    a:`<b>制服・ロッカーについて</b>
+<ul>
+<li>制服は初日に担当者から貸し出し（サイズ確認あり）</li>
+<li>ロッカーは更衣室で空き番号を使用（100円返却式）</li>
+<li>貴重品はロッカーへ（売場への持ち込み禁止）</li>
+<li>制服の洗濯は自己管理（週1以上推奨）</li>
+</ul>
+制服の紛失・破損はすぐに事務所へ報告してください。` },
+
+  { cat:'other', keywords:['朝礼','ミーティング','会議'],
+    q:'朝礼はいつ？どこで？',
+    a:`<b>朝礼・ミーティング</b>
+<ul>
+<li>全体朝礼：開店30分前 / バックヤード集合</li>
+<li>部門ミーティング：週1回（曜日は部門によって異なる）</li>
+<li>欠席する場合は事前にチーフへ連絡</li>
+</ul>
+朝礼では当日の目標・注意事項が共有されます。必ず出席してください。` },
+
+  { cat:'other', keywords:['緊急','火災','地震','避難','事故'],
+    q:'緊急時の対応は？',
+    a:`<b>緊急時の基本行動</b>
+<ul>
+<li>火災：非常ベルが鳴ったら即座に避難誘導開始</li>
+<li>地震：その場にしゃがみ、落下物から身を守る</li>
+<li>お客様の体調不良：すぐに責任者へ連絡・AEDの場所は事務所前</li>
+<li>万引き発見：一人で対処せず無線で報告</li>
+</ul>
+緊急時マニュアルはバックルームの壁に掲示してあります。` },
+];
+
+// ══════════════════════════════════════════
+//  状態
+// ══════════════════════════════════════════
+let currentCat = 'all';
+let isTyping = false;
+
+const chatArea  = document.getElementById('chatArea');
+const quickWrap = document.getElementById('quickWrap');
+const userInput = document.getElementById('userInput');
+
+// ══════════════════════════════════════════
+//  起動時
+// ══════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  addBotMsg(`はじめまして！<b>新人マニュアル案内ボット</b>です🤖<br><br>「〇〇ってどうするの？」をここで質問すると、手順や注意点をすぐにお答えします。<br><br>下のカテゴリーか、よく使う質問ボタンから選んでみてください👇`);
+  renderQuickReplies('all');
+  userInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendMsg(); });
+});
+
+// ══════════════════════════════════════════
+//  カテゴリーフィルター
+// ══════════════════════════════════════════
+function filterCat(cat) {
+  currentCat = cat;
+  document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  renderQuickReplies(cat);
+}
+
+function renderQuickReplies(cat) {
+  const items = cat === 'all' ? KB.slice(0, 6) : KB.filter(k => k.cat === cat);
+  quickWrap.innerHTML = items.map(k =>
+    `<button class="quick-btn" onclick="askQuestion('${escHtml(k.q)}')">${k.q}</button>`
+  ).join('');
+}
+
+// ══════════════════════════════════════════
+//  メッセージ送信
+// ══════════════════════════════════════════
+function sendMsg() {
+  const text = userInput.value.trim();
+  if (!text || isTyping) return;
+  userInput.value = '';
+  addUserMsg(text);
+  const answer = findAnswer(text);
+  showTyping(answer);
+}
+
+function askQuestion(q) {
+  if (isTyping) return;
+  addUserMsg(q);
+  const answer = findAnswer(q);
+  showTyping(answer);
+}
+
+function findAnswer(text) {
+  const t = text.toLowerCase();
+  // キーワードマッチ（スコアリング）
+  let best = null, bestScore = 0;
+  for (const item of KB) {
+    if (currentCat !== 'all' && item.cat !== currentCat) continue;
+    let score = 0;
+    for (const kw of item.keywords) {
+      if (t.includes(kw)) score++;
+    }
+    if (score > bestScore) { bestScore = score; best = item; }
+  }
+  if (best && bestScore > 0) return best.a;
+
+  // カテゴリー横断でも探す
+  let best2 = null, best2Score = 0;
+  for (const item of KB) {
+    let score = 0;
+    for (const kw of item.keywords) { if (t.includes(kw)) score++; }
+    if (score > best2Score) { best2Score = score; best2 = item; }
+  }
+  if (best2 && best2Score > 0) return best2.a;
+
+  return `申し訳ありません、「<b>${escHtml(text)}</b>」についての情報が見つかりませんでした。<br><br>下のカテゴリーボタンから関連する項目を探してみてください。<br>それでも見つからない場合は、担当チーフに直接確認してください。`;
+}
+
+// ══════════════════════════════════════════
+//  UI描画
+// ══════════════════════════════════════════
+function addBotMsg(html) {
+  const el = document.createElement('div');
+  el.className = 'msg bot';
+  el.innerHTML = `<div class="msg-avatar">🤖</div><div class="msg-bubble">${html}</div>`;
+  chatArea.appendChild(el);
+  scrollBottom();
+}
+
+function addUserMsg(text) {
+  const el = document.createElement('div');
+  el.className = 'msg user';
+  el.innerHTML = `<div class="msg-bubble">${escHtml(text)}</div>`;
+  chatArea.appendChild(el);
+  scrollBottom();
+}
+
+function showTyping(answer) {
+  isTyping = true;
+  const typingEl = document.createElement('div');
+  typingEl.className = 'msg bot';
+  typingEl.id = 'typing';
+  typingEl.innerHTML = `<div class="msg-avatar">🤖</div><div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  chatArea.appendChild(typingEl);
+  scrollBottom();
+  setTimeout(() => {
+    typingEl.remove();
+    addBotMsg(answer);
+    isTyping = false;
+  }, 800);
+}
+
+function scrollBottom() { chatArea.scrollTop = chatArea.scrollHeight; }
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>

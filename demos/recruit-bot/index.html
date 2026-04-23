@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>採用問い合わせボット | デモ</title>
+<style>
+  :root {
+    --navy:   #1A2B4A;
+    --blue:   #3A7BD5;
+    --orange: #F5A623;
+    --green:  #22c55e;
+    --bg:     #F0F4F8;
+    --white:  #fff;
+    --border: #D8E3F0;
+    --muted:  #6B7A99;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Hiragino Maru Gothic ProN','Yu Gothic',sans-serif; background: var(--bg); color: var(--navy); height: 100vh; display: flex; flex-direction: column; }
+
+  /* ─── HEADER ─── */
+  .header { background: var(--navy); color: #fff; padding: 0.8rem 1.2rem; display: flex; align-items: center; gap: 0.8rem; flex-shrink: 0; }
+  .header-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg,#22c55e,#16a34a); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+  .header-info h1 { font-size: 0.92rem; font-weight: 700; }
+  .header-info p  { font-size: 0.7rem; color: rgba(255,255,255,.6); margin-top: 1px; }
+  .header-status { margin-left: auto; display: flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; color: rgba(255,255,255,.7); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .demo-notice { background: #FFF7E0; border-bottom: 2px solid var(--orange); text-align: center; font-size: 0.72rem; color: #7a5000; padding: 0.35rem; flex-shrink: 0; }
+
+  /* ─── BODY ─── */
+  .body { display: flex; flex: 1; overflow: hidden; }
+
+  /* ─── CHAT ─── */
+  .chat-col { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .chat-area { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.9rem; }
+  .msg { display: flex; gap: 0.6rem; max-width: 88%; animation: fadeIn .2s ease; }
+  .msg.bot  { align-self: flex-start; }
+  .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+  .msg-avatar { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; margin-top: 2px; }
+  .msg.bot  .msg-avatar { background: linear-gradient(135deg,#22c55e,#16a34a); }
+  .msg.user .msg-avatar { background: linear-gradient(135deg,#64748b,#94a3b8); }
+  .msg-bubble { padding: 0.7rem 0.95rem; border-radius: 16px; font-size: 0.85rem; line-height: 1.8; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+  .msg.bot  .msg-bubble { background: var(--white); border-radius: 4px 16px 16px 16px; }
+  .msg.user .msg-bubble { background: #3A7BD5; color: #fff; border-radius: 16px 4px 16px 16px; }
+  .msg-bubble b { color: #16a34a; }
+  .msg.user .msg-bubble b { color: #b3d4ff; }
+  .typing { display: flex; gap: 4px; padding: 0.5rem 0.6rem; }
+  .typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: bounce .9s infinite; }
+  .typing span:nth-child(2){animation-delay:.15s}
+  .typing span:nth-child(3){animation-delay:.3s}
+  @keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
+
+  /* ─── QUICK REPLIES ─── */
+  .quick-wrap { padding: 0.6rem 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; flex-shrink: 0; }
+  .quick-btn { background: var(--white); border: 1.5px solid var(--blue); color: var(--blue); font-size: 0.78rem; padding: 0.4rem 0.9rem; border-radius: 999px; cursor: pointer; font-family: inherit; transition: all .15s; }
+  .quick-btn:hover { background: var(--blue); color: #fff; }
+  .quick-btn.green-btn { border-color: #16a34a; color: #16a34a; }
+  .quick-btn.green-btn:hover { background: #16a34a; color: #fff; }
+
+  /* ─── INPUT ─── */
+  .input-area { background: var(--white); border-top: 1px solid var(--border); padding: 0.75rem 1rem; display: flex; gap: 0.6rem; flex-shrink: 0; }
+  .input-area input { flex: 1; border: 1.5px solid var(--border); border-radius: 999px; padding: 0.55rem 1rem; font-size: 0.85rem; font-family: inherit; outline: none; transition: border-color .2s; }
+  .input-area input:focus { border-color: var(--blue); }
+  .send-btn { background: var(--blue); color: #fff; border: none; border-radius: 50%; width: 38px; height: 38px; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background .2s; }
+  .send-btn:hover { background: #2a5fb5; }
+
+  /* ─── INFO PANEL ─── */
+  .info-col { width: 240px; flex-shrink: 0; background: var(--white); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .info-header { background: var(--navy); color: #fff; padding: 0.75rem 1rem; font-size: 0.8rem; font-weight: 700; }
+  .info-body { flex: 1; overflow-y: auto; padding: 0.9rem; display: flex; flex-direction: column; gap: 0.9rem; }
+
+  .job-summary { background: #F0FFF4; border: 1.5px solid #bbf7d0; border-radius: 10px; padding: 0.8rem; }
+  .job-summary .js-title { font-size: 0.65rem; color: #16a34a; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 0.5rem; }
+  .job-row { display: flex; align-items: flex-start; gap: 0.4rem; font-size: 0.75rem; margin-bottom: 0.35rem; color: var(--navy); }
+  .job-row .icon { font-size: 0.85rem; flex-shrink: 0; }
+  .job-row .val { font-weight: 600; }
+
+  .checklist-box { }
+  .cl-title { font-size: 0.65rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 0.5rem; }
+  .cl-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--muted); margin-bottom: 0.3rem; transition: color .3s; }
+  .cl-item.checked { color: #16a34a; font-weight: 600; }
+  .cl-check { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; transition: all .3s; }
+  .cl-item.checked .cl-check { background: #16a34a; border-color: #16a34a; color: #fff; }
+
+  .apply-box { background: linear-gradient(135deg, #1A2B4A, #2a4a8a); border-radius: 10px; padding: 0.9rem; text-align: center; display: none; }
+  .apply-box.show { display: block; animation: fadeIn .4s ease; }
+  .apply-box p { font-size: 0.72rem; color: rgba(255,255,255,.8); margin-bottom: 0.6rem; }
+  .apply-btn { display: block; background: var(--orange); color: #fff; border: none; border-radius: 8px; padding: 0.6rem; font-size: 0.82rem; font-weight: 700; cursor: pointer; font-family: inherit; width: 100%; transition: background .2s; text-decoration: none; }
+  .apply-btn:hover { background: #e09620; }
+
+  .info-footer { padding: 0.8rem; border-top: 1px solid var(--border); flex-shrink: 0; }
+  .reset-btn { width: 100%; padding: 0.5rem; background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.78rem; cursor: pointer; font-family: inherit; color: var(--muted); transition: all .15s; }
+  .reset-btn:hover { background: var(--border); }
+
+  @media (max-width: 600px) { .info-col { display: none; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-avatar">💼</div>
+  <div class="header-info">
+    <h1>採用問い合わせボット</h1>
+    <p>〇〇スーパー（デモ）— 採用担当窓口</p>
+  </div>
+  <div class="header-status">
+    <div class="status-dot"></div>24時間対応中
+  </div>
+</div>
+<div class="demo-notice">※ デモ用サンプルです。実際の導入時は自社の求人条件に合わせてカスタマイズします。</div>
+
+<div class="body">
+  <div class="chat-col">
+    <div class="chat-area" id="chatArea"></div>
+    <div class="quick-wrap" id="quickWrap"></div>
+    <div class="input-area">
+      <input type="text" id="userInput" placeholder="質問を入力、またはボタンからお選びください">
+      <button class="send-btn" onclick="sendMsg()">➤</button>
+    </div>
+  </div>
+
+  <div class="info-col">
+    <div class="info-header">📋 求人基本情報</div>
+    <div class="info-body">
+      <div class="job-summary">
+        <div class="js-title">〇〇スーパー 求人概要</div>
+        <div class="job-row"><span class="icon">💰</span><span>時給 <span class="val">1,100〜1,350円</span></span></div>
+        <div class="job-row"><span class="icon">📅</span><span>週<span class="val">2日〜</span> / 1日<span class="val">4h〜</span>OK</span></div>
+        <div class="job-row"><span class="icon">🕐</span><span>6:00〜24:00 各種シフト</span></div>
+        <div class="job-row"><span class="icon">🚗</span><span>交通費<span class="val">全額支給</span></span></div>
+        <div class="job-row"><span class="icon">👕</span><span>制服<span class="val">無料貸与</span></span></div>
+        <div class="job-row"><span class="icon">✅</span><span>未経験・学生・シニア歓迎</span></div>
+      </div>
+
+      <div class="checklist-box">
+        <div class="cl-title">確認済みの項目</div>
+        <div class="cl-item" id="cl-salary">
+          <div class="cl-check">✓</div><span>給与・待遇</span>
+        </div>
+        <div class="cl-item" id="cl-shift">
+          <div class="cl-check">✓</div><span>シフト・勤務時間</span>
+        </div>
+        <div class="cl-item" id="cl-req">
+          <div class="cl-check">✓</div><span>応募条件</span>
+        </div>
+        <div class="cl-item" id="cl-interview">
+          <div class="cl-check">✓</div><span>面接・応募方法</span>
+        </div>
+        <div class="cl-item" id="cl-env">
+          <div class="cl-check">✓</div><span>職場環境</span>
+        </div>
+      </div>
+
+      <div class="apply-box" id="applyBox">
+        <p>気になる点はクリアになりましたか？</p>
+        <a class="apply-btn" href="#">📝 応募フォームへ</a>
+      </div>
+    </div>
+    <div class="info-footer">
+      <button class="reset-btn" onclick="resetDemo()">🔄 最初からやり直す</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  Q&A データ
+// ══════════════════════════════════════════
+const CATEGORIES = [
+  { label: '💰 給与・待遇について',    key: 'salary' },
+  { label: '📅 シフト・勤務時間',      key: 'shift' },
+  { label: '✅ 応募条件・資格',        key: 'req' },
+  { label: '📝 面接・応募方法',        key: 'interview' },
+  { label: '🏪 職場の雰囲気・環境',   key: 'env' },
+];
+
+const QA = {
+  salary: {
+    clId: 'cl-salary',
+    questions: [
+      { q: '時給はいくらですか？',
+        a: `時給は<b>1,100〜1,350円</b>です。\n\n経験やスキルに応じて入社時に決定し、6ヶ月ごとの評価で昇給のチャンスがあります。\n\nまた、早朝（6〜8時）と深夜（22〜24時）は<b>時給25%アップ</b>の割増賃金が付きます！` },
+      { q: '交通費は出ますか？',
+        a: `交通費は<b>全額支給</b>しています（上限：月30,000円）。\n\n電車・バス・自転車通勤いずれも対応します。車・バイク通勤の方には別途ガソリン代の支給もあります。` },
+      { q: '昇給・ボーナスはありますか？',
+        a: `昇給は<b>年2回（4月・10月）</b>の評価査定があります。\n\nパートタイムスタッフも対象で、実績や習熟度に応じて昇給できます。ボーナスは正社員のみですが、繁忙期には時給アップで対応しています。` },
+      { q: '社会保険はありますか？',
+        a: `週20時間以上・月収8.8万円以上の方は<b>社会保険（健康保険・厚生年金）</b>に加入できます。\n\n扶養内で働きたい方は、シフトで調整できますのでご安心ください。` },
+    ]
+  },
+  shift: {
+    clId: 'cl-shift',
+    questions: [
+      { q: '週何日から働けますか？',
+        a: `<b>週2日〜</b>OKです！\n\n「月・水・金だけ」「週末のみ」など、ご都合に合わせてシフトを組めます。繁忙期（年末年始など）は少し多めに入っていただけると助かりますが、無理のない範囲でOKです。` },
+      { q: '働ける時間帯を教えてください',
+        a: `営業時間は<b>6:00〜24:00</b>です。各種シフトがあります：\n\n🌅 早朝：6:00〜10:00\n☀️ 日中：10:00〜15:00\n🌇 夕方：15:00〜19:00\n🌙 夜間：19:00〜24:00\n\n「午前中だけ」「夜だけ」といった固定シフトも歓迎です。` },
+      { q: '急なお休みは取れますか？',
+        a: `体調不良や急用の場合、<b>前日までにご連絡</b>いただければ対応します。\n\n当日急病の場合もLINEグループで代わりを探す仕組みがあり、スタッフ同士でフォローし合えます。無理なく働ける環境を大切にしています。` },
+      { q: '学校・副業との両立は？',
+        a: `もちろん可能です！\n\n学生の方はテスト期間中の休み取得OK、授業時間に合わせたシフトを組めます。\n\n副業の方は本業の休日・夜間のみといった働き方もできます。<b>現在スタッフの約4割が副業・掛け持ち</b>で活躍中です。` },
+    ]
+  },
+  req: {
+    clId: 'cl-req',
+    questions: [
+      { q: '未経験でも大丈夫ですか？',
+        a: `<b>もちろんOKです！</b>\n\nスーパーでのお仕事が初めての方でも安心の研修制度があります。入社後1〜2週間は先輩スタッフとペアで丁寧に指導しますので、ご安心ください。\n\n現在スタッフの約6割が未経験からスタートしています。` },
+      { q: '年齢制限はありますか？',
+        a: `<b>16歳（高校生可）〜70代</b>まで幅広いスタッフが活躍中です！\n\n「子育てが落ち着いたので復帰したい」「定年後も働きたい」など様々な方が在籍しています。年齢を問わず長く活躍できる職場です。` },
+      { q: '資格・免許は必要ですか？',
+        a: `特別な資格は<b>不要</b>です。\n\n食品衛生についての簡単な研修は入社後に行います（費用・時間とも会社負担）。\n\n調理部門に興味がある方は、入社後にスキルアップのサポートもあります。` },
+      { q: '外国籍でも応募できますか？',
+        a: `就労可能な在留資格をお持ちの方は<b>国籍を問わず応募可能</b>です。\n\n日常会話レベルの日本語があれば業務に支障ありません。現在、外国籍スタッフも活躍しています。在留資格の詳細は面接時にご確認ください。` },
+    ]
+  },
+  interview: {
+    clId: 'cl-interview',
+    questions: [
+      { q: '応募方法を教えてください',
+        a: `以下の方法でご応募いただけます：\n\n① <b>このチャットの「応募する」ボタン</b>（24時間受付）\n② 電話：<b>03-XXXX-XXXX</b>（9〜18時・土日可）\n③ 店頭のサービスカウンターでご相談\n\nまずはお気軽にご連絡ください！` },
+      { q: '面接はどんな感じですか？',
+        a: `面接は<b>約30〜45分</b>、店舗内の事務室で実施します。\n\n服装は<b>私服でOK</b>（清潔感があればOKです）。履歴書は不要で、簡単な応募フォームの内容でOKです。\n\nWeb面接（Zoom）にも対応しています。お気軽にお申し付けください。` },
+      { q: '採用結果はいつわかりますか？',
+        a: `面接後、<b>3営業日以内</b>に電話またはメールでお知らせします。\n\n採用決定後は雇用条件の確認・制服サイズ合わせを行い、<b>最短1週間後</b>から勤務開始できます。` },
+    ]
+  },
+  env: {
+    clId: 'cl-env',
+    questions: [
+      { q: '職場の雰囲気を教えてください',
+        a: `20代〜70代まで幅広いスタッフが働く<b>アットホームな職場</b>です。\n\nスタッフ平均在籍年数は<b>4.2年</b>と定着率が高く、「人間関係が良い」と感じている方が多いです。\n\n新人スタッフには必ず「担当先輩」を付けますので、困ったことがあってもすぐに相談できます。` },
+      { q: '研修はありますか？',
+        a: `入社後<b>1〜2週間</b>の研修があります。\n\n先輩スタッフとペアで実際の業務を学ぶOJT形式です。レジ操作・品出し・接客の基礎をしっかり習得できます。\n\n研修期間中も通常と同じ時給が支払われます（研修費用なし）。` },
+      { q: '制服・設備はどうなっていますか？',
+        a: `制服は<b>無料で貸与</b>（S〜XLサイズ揃えています）。\n\n更衣室・ロッカーは完備。社員食堂はありませんが、売場の食品を<b>社員割引（10%オフ）</b>で購入できます。\n\n駐車場もスタッフ専用スペースがあります（台数に限りあり）。` },
+    ]
+  },
+};
+
+// ══════════════════════════════════════════
+//  状態管理
+// ══════════════════════════════════════════
+let isTyping = false;
+let checkedCount = 0;
+const checkedKeys = new Set();
+
+const chatArea  = document.getElementById('chatArea');
+const quickWrap = document.getElementById('quickWrap');
+const userInput = document.getElementById('userInput');
+
+// ══════════════════════════════════════════
+//  起動
+// ══════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  addBotMsg(`いらっしゃいませ！\n<b>〇〇スーパー</b>の採用担当ボットです😊\n\n求人に関するご質問に24時間お答えします。気になることを以下からお選びください。`);
+  renderCategoryQuick();
+  userInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendMsg(); });
+});
+
+// ══════════════════════════════════════════
+//  送信
+// ══════════════════════════════════════════
+function sendMsg() {
+  const text = userInput.value.trim();
+  if (!text || isTyping) return;
+  userInput.value = '';
+  handleFreeText(text);
+}
+
+function handleFreeText(text) {
+  addUserMsg(text);
+  clearQuick();
+
+  const t = text;
+  let key = null;
+  let qIdx = -1;
+
+  if (/時給|給与|給料|お金|交通費|昇給|ボーナス|社会保険/.test(t)) key = 'salary';
+  else if (/シフト|勤務|時間|週|日数|早朝|深夜|副業|掛け持ち|学校/.test(t)) key = 'shift';
+  else if (/未経験|年齢|資格|外国|条件|応募資格/.test(t)) key = 'req';
+  else if (/面接|応募|採用|いつから|連絡/.test(t)) key = 'interview';
+  else if (/雰囲気|研修|制服|駐車場|職場|環境|設備/.test(t)) key = 'env';
+
+  if (key) {
+    const items = QA[key].questions;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].q.includes(text) || text.includes(items[i].q.replace(/？$/, ''))) {
+        qIdx = i; break;
+      }
+    }
+    if (qIdx >= 0) {
+      answerQ(key, qIdx);
+    } else {
+      answerQ(key, 0);
+    }
+    return;
+  }
+
+  showTyping(`ご質問ありがとうございます。\nお手数ですが、以下のカテゴリーからご選択いただけますか？`, () => renderCategoryQuick());
+}
+
+// ══════════════════════════════════════════
+//  カテゴリー選択
+// ══════════════════════════════════════════
+function renderCategoryQuick() {
+  quickWrap.innerHTML = CATEGORIES.map(c =>
+    `<button class="quick-btn" onclick="selectCategory('${c.key}')">${c.label}</button>`
+  ).join('');
+}
+
+function selectCategory(key) {
+  if (isTyping) return;
+  const cat = CATEGORIES.find(c => c.key === key);
+  addUserMsg(cat.label);
+  clearQuick();
+  const items = QA[key].questions;
+  showTyping(
+    `<b>${cat.label}</b>についてですね。\n以下からお選びください。`,
+    () => renderQQuick(key)
+  );
+}
+
+function renderQQuick(key) {
+  const items = QA[key].questions;
+  quickWrap.innerHTML = items.map((item, i) =>
+    `<button class="quick-btn" onclick="selectQ('${key}',${i})">${item.q}</button>`
+  ).join('') +
+    `<button class="quick-btn" style="border-color:#aaa;color:#888" onclick="renderCategoryQuick()">← カテゴリーに戻る</button>`;
+}
+
+function selectQ(key, idx) {
+  if (isTyping) return;
+  addUserMsg(QA[key].questions[idx].q);
+  clearQuick();
+  answerQ(key, idx);
+}
+
+function answerQ(key, idx) {
+  checkItem(QA[key].clId);
+  const answer = QA[key].questions[idx].a;
+  showTyping(answer, () => {
+    renderAfterQuick(key);
+  });
+}
+
+function renderAfterQuick(currentKey) {
+  const otherCats = CATEGORIES.filter(c => c.key !== currentKey);
+  const btns = otherCats.slice(0, 3).map(c =>
+    `<button class="quick-btn" onclick="selectCategory('${c.key}')">${c.label}</button>`
+  ).join('');
+  quickWrap.innerHTML =
+    `<button class="quick-btn green-btn" onclick="renderQQuick('${currentKey}')">他にも聞く</button>` +
+    btns +
+    (checkedCount >= 3
+      ? `<button class="quick-btn green-btn" onclick="showApply()">📝 応募に進む</button>`
+      : '');
+}
+
+// ══════════════════════════════════════════
+//  チェックリスト
+// ══════════════════════════════════════════
+function checkItem(clId) {
+  if (checkedKeys.has(clId)) return;
+  checkedKeys.add(clId);
+  checkedCount++;
+  const el = document.getElementById(clId);
+  if (el) el.classList.add('checked');
+  if (checkedCount >= 3) {
+    setTimeout(() => {
+      document.getElementById('applyBox').classList.add('show');
+    }, 600);
+  }
+}
+
+function showApply() {
+  clearQuick();
+  addUserMsg('応募に進みたいです！');
+  showTyping(
+    `ありがとうございます！😊\n\n右のパネルの「<b>応募フォームへ</b>」ボタン、または電話（<b>03-XXXX-XXXX</b>）にてご連絡ください。\n\nご応募をお待ちしております！ご不明な点がありましたら、いつでもご質問ください。`,
+    () => renderCategoryQuick()
+  );
+}
+
+// ══════════════════════════════════════════
+//  UI
+// ══════════════════════════════════════════
+function addBotMsg(text) {
+  const el = document.createElement('div');
+  el.className = 'msg bot';
+  el.innerHTML = `<div class="msg-avatar">💼</div><div class="msg-bubble">${text.replace(/\n/g,'<br>')}</div>`;
+  chatArea.appendChild(el);
+  scrollBottom();
+}
+function addUserMsg(text) {
+  const el = document.createElement('div');
+  el.className = 'msg user';
+  el.innerHTML = `<div class="msg-bubble">${escHtml(text)}</div><div class="msg-avatar">👤</div>`;
+  chatArea.appendChild(el);
+  scrollBottom();
+}
+function showTyping(answer, cb) {
+  isTyping = true;
+  const el = document.createElement('div');
+  el.className = 'msg bot';
+  el.innerHTML = `<div class="msg-avatar">💼</div><div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  chatArea.appendChild(el);
+  scrollBottom();
+  const delay = 500 + Math.min(answer.replace(/<[^>]+>/g,'').length * 4, 900);
+  setTimeout(() => {
+    el.remove();
+    addBotMsg(answer);
+    isTyping = false;
+    if (cb) cb();
+  }, delay);
+}
+function clearQuick() { quickWrap.innerHTML = ''; }
+function scrollBottom() { chatArea.scrollTop = chatArea.scrollHeight; }
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function resetDemo() {
+  isTyping = false;
+  checkedCount = 0;
+  checkedKeys.clear();
+  chatArea.innerHTML = '';
+  clearQuick();
+  document.querySelectorAll('.cl-item').forEach(el => el.classList.remove('checked'));
+  document.getElementById('applyBox').classList.remove('show');
+  addBotMsg(`いらっしゃいませ！\n<b>〇〇スーパー</b>の採用担当ボットです😊\n\n求人に関するご質問に24時間お答えします。気になることを以下からお選びください。`);
+  renderCategoryQuick();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>欠品管理ダッシュボード｜大森中店</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+         background: #f0f2f5; color: #333; }
+  header { background: linear-gradient(135deg, #1a237e, #283593);
+           color: white; padding: 20px 24px; }
+  header h1 { font-size: 1.4rem; font-weight: 700; }
+  header p  { font-size: 0.85rem; opacity: 0.8; margin-top: 4px; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 20px 16px; }
+
+  /* サマリーカード */
+  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+             gap: 12px; margin-bottom: 24px; }
+  .card { background: white; border-radius: 10px; padding: 18px 20px;
+          box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .card .label { font-size: 0.78rem; color: #888; margin-bottom: 6px; }
+  .card .value { font-size: 1.8rem; font-weight: 700; color: #1a237e; }
+  .card .value.red { color: #c62828; }
+  .card .sub { font-size: 0.75rem; color: #aaa; margin-top: 4px; }
+
+  /* グラフエリア */
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  @media(max-width: 700px) { .charts { grid-template-columns: 1fr; } }
+  .chart-card { background: white; border-radius: 10px; padding: 18px;
+                box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .chart-card h2 { font-size: 0.95rem; color: #555; margin-bottom: 14px;
+                   border-left: 3px solid #1a237e; padding-left: 10px; }
+  .chart-wide { grid-column: 1 / -1; }
+
+  /* ランキングテーブル */
+  .table-card { background: white; border-radius: 10px; padding: 18px;
+                box-shadow: 0 2px 8px rgba(0,0,0,.08); overflow-x: auto; }
+  .table-card h2 { font-size: 0.95rem; color: #555; margin-bottom: 14px;
+                   border-left: 3px solid #c62828; padding-left: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th { background: #f5f5f5; padding: 10px 12px; text-align: left;
+       font-weight: 600; color: #666; border-bottom: 2px solid #e0e0e0; }
+  td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; }
+  tr:hover td { background: #fafafa; }
+  td.rank { font-weight: 700; color: #1a237e; width: 40px; }
+  td.num { text-align: right; }
+  td.loss { color: #c62828; font-weight: 600; }
+  td.name { max-width: 240px; }
+  tr:nth-child(1) td.rank { color: #f57f17; font-size: 1.1rem; }
+  tr:nth-child(2) td.rank { color: #78909c; }
+  tr:nth-child(3) td.rank { color: #8d6e63; }
+
+  footer { text-align: center; font-size: 0.75rem; color: #aaa; padding: 20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📊 欠品管理ダッシュボード</h1>
+  <p>大森中店｜最終更新: 2026/04/06</p>
+</header>
+
+<div class="container">
+
+  <!-- サマリーカード -->
+  <div class="summary">
+    <div class="card">
+      <div class="label">総欠品記録数</div>
+      <div class="value">68</div>
+      <div class="sub">件（延べ）</div>
+    </div>
+    <div class="card">
+      <div class="label">欠品ユニーク商品数</div>
+      <div class="value">66</div>
+      <div class="sub">種類</div>
+    </div>
+    <div class="card">
+      <div class="label">推定チャンスロス</div>
+      <div class="value red">¥40,768</div>
+      <div class="sub">売価合計（参考値）</div>
+    </div>
+    <div class="card">
+      <div class="label">記録日数</div>
+      <div class="value">2</div>
+      <div class="sub">日間</div>
+    </div>
+  </div>
+
+  <!-- グラフ -->
+  <div class="charts">
+    <div class="chart-card chart-wide">
+      <h2>📅 日別 欠品件数トレンド</h2>
+      <canvas id="dailyChart" height="80"></canvas>
+    </div>
+    <div class="chart-card">
+      <h2>🏆 欠品回数 TOP15</h2>
+      <canvas id="rankChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <h2>🗂️ 部門別 欠品割合</h2>
+      <canvas id="deptChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ランキングテーブル -->
+  <div class="table-card">
+    <h2>🔴 欠品ランキング（チャンスロス順）</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>商品名</th>
+          <th style="text-align:right">欠品回数</th>
+          <th style="text-align:right">売価</th>
+          <th style="text-align:right">推定ロス</th>
+        </tr>
+      </thead>
+      <tbody>
+    <tr>
+      <td class="rank">1</td>
+      <td class="name">ホールスター5.0ml</td>
+      <td class="num">2回</td>
+      <td class="num">¥698</td>
+      <td class="num loss">¥1,396</td>
+    </tr>
+    <tr>
+      <td class="rank">2</td>
+      <td class="name">はくばい　もち麦ごはん　１２ 560</td>
+      <td class="num">2回</td>
+      <td class="num">¥478</td>
+      <td class="num loss">¥956</td>
+    </tr>
+    <tr>
+      <td class="rank">3</td>
+      <td class="name">シードルスイート 200ml</td>
+      <td class="num">1回</td>
+      <td class="num">¥260</td>
+      <td class="num loss">¥260</td>
+    </tr>
+    <tr>
+      <td class="rank">4</td>
+      <td class="name">モルツ</td>
+      <td class="num">1回</td>
+      <td class="num">¥1,000</td>
+      <td class="num loss">¥1,000</td>
+    </tr>
+    <tr>
+      <td class="rank">5</td>
+      <td class="name">マルチワイン アスティ37</td>
+      <td class="num">1回</td>
+      <td class="num">¥980</td>
+      <td class="num loss">¥980</td>
+    </tr>
+    <tr>
+      <td class="rank">6</td>
+      <td class="name">ヴィヴェーレ カヴァ ブリュッット</td>
+      <td class="num">1回</td>
+      <td class="num">¥814</td>
+      <td class="num loss">¥814</td>
+    </tr>
+    <tr>
+      <td class="rank">7</td>
+      <td class="name">プロセッコ ロゼ</td>
+      <td class="num">1回</td>
+      <td class="num">¥825</td>
+      <td class="num loss">¥825</td>
+    </tr>
+    <tr>
+      <td class="rank">8</td>
+      <td class="name">ラテンウエルテ 白 2,000ml</td>
+      <td class="num">1回</td>
+      <td class="num">¥2,000</td>
+      <td class="num loss">¥2,000</td>
+    </tr>
+    <tr>
+      <td class="rank">9</td>
+      <td class="name">カンパウエホ レレルウラン</td>
+      <td class="num">1回</td>
+      <td class="num">¥1,280</td>
+      <td class="num loss">¥1,280</td>
+    </tr>
+    <tr>
+      <td class="rank">10</td>
+      <td class="name">バロッサ コレオーネ ピノ</td>
+      <td class="num">1回</td>
+      <td class="num">¥1,298</td>
+      <td class="num loss">¥1,298</td>
+    </tr>
+    <tr>
+      <td class="rank">11</td>
+      <td class="name">プレイギア 700ml</td>
+      <td class="num">1回</td>
+      <td class="num">¥1,500</td>
+      <td class="num loss">¥1,500</td>
+    </tr>
+    <tr>
+      <td class="rank">12</td>
+      <td class="name">ポヤモ 12年 350ml</td>
+      <td class="num">1回</td>
+      <td class="num">¥4,000</td>
+      <td class="num loss">¥4,000</td>
+    </tr>
+    <tr>
+      <td class="rank">13</td>
+      <td class="name">ブラッククリア 3.0</td>
+      <td class="num">1回</td>
+      <td class="num">¥320</td>
+      <td class="num loss">¥320</td>
+    </tr>
+    <tr>
+      <td class="rank">14</td>
+      <td class="name">ホールスター35.0ml</td>
+      <td class="num">1回</td>
+      <td class="num">¥168</td>
+      <td class="num loss">¥168</td>
+    </tr>
+    <tr>
+      <td class="rank">15</td>
+      <td class="name">タウワーサーム四手柄100</td>
+      <td class="num">1回</td>
+      <td class="num">¥0</td>
+      <td class="num loss">¥0</td>
+    </tr></tbody>
+    </table>
+  </div>
+
+</div>
+
+<footer>欠品管理システム｜大森中店 副店長</footer>
+
+<script>
+// 日別トレンド
+new Chart(document.getElementById('dailyChart'), {
+  type: 'line',
+  data: {
+    labels: ["2026/04/02","2026/04/06"],
+    datasets: [{
+      label: '欠品件数',
+      data: [16,52],
+      borderColor: '#1a237e',
+      backgroundColor: 'rgba(26,35,126,0.1)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 5,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+  }
+});
+
+// 欠品ランキング
+new Chart(document.getElementById('rankChart'), {
+  type: 'bar',
+  data: {
+    labels: ["ホールスター5.0ml","はくばい　もち麦ごはん　１２ …","シードルスイート 200ml","モルツ","マルチワイン アスティ37","ヴィヴェーレ カヴァ ブリュッ…","プロセッコ ロゼ","ラテンウエルテ 白 2,000…","カンパウエホ レレルウラン","バロッサ コレオーネ ピノ","プレイギア 700ml","ポヤモ 12年 350ml","ブラッククリア 3.0","ホールスター35.0ml","タウワーサーム四手柄100"],
+    datasets: [{
+      label: '欠品回数',
+      data: [2,2,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      backgroundColor: 'rgba(26,35,126,0.7)',
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+  }
+});
+
+// 部門別
+new Chart(document.getElementById('deptChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ["お酒","ドリンク","部門28","部門25","部門18"],
+    datasets: [{
+      data: [21,27,6,1,13],
+      backgroundColor: [
+        '#e53935', // 赤    — 精肉
+        '#1e88e5', // 青    — ドリンク
+        '#8e24aa', // 紫    — お酒
+        '#43a047', // 緑    — 青果
+        '#fb8c00', // オレンジ — 惣菜
+        '#00acc1', // 水色  — 鮮魚
+        '#fdd835', // 黄    — 菓子
+        '#f06292', // ピンク — 日配
+        '#6d4c41', // 茶    — デリカ
+        '#78909c', // グレー — 日用品
+      ],
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'right' } }
+  }
+});
+</script>
+</body>
+</html>

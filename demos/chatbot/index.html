@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>予約受付チャットボット</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --accent: #059669;
+    --accent-dark: #047857;
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --text: #1e293b;
+    --text-light: #64748b;
+    --border: #e2e8f0;
+    --bot-bg: #f1f5f9;
+    --user-bg: #2563eb;
+    --danger: #ef4444;
+    --danger-dark: #dc2626;
+    --warning: #f59e0b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ===== Config Banner ===== */
+  .config-banner {
+    padding: 10px 20px;
+    background: #fef3c7;
+    border-bottom: 1px solid #fcd34d;
+    text-align: center;
+    font-size: 13px;
+    color: #92400e;
+  }
+
+  /* ===== Tab Bar ===== */
+  .tab-bar {
+    display: flex;
+    background: var(--card);
+    border-bottom: 2px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .tab-btn {
+    flex: 1; padding: 16px; text-align: center;
+    font-size: 15px; font-weight: 600;
+    cursor: pointer; border: none; background: none;
+    color: var(--text-light);
+    transition: all .2s;
+    border-bottom: 3px solid transparent;
+  }
+  .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+  .tab-btn:hover { background: var(--bot-bg); }
+  .tab-btn:nth-child(2).active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: flex; flex-direction: column; }
+
+  /* ===== Chat Tab ===== */
+  #chatTab { height: calc(100vh - 55px); }
+  .has-banner #chatTab { height: calc(100vh - 55px - 38px); }
+  .chat-header {
+    padding: 20px 24px;
+    background: linear-gradient(135deg, var(--primary), #7c3aed);
+    color: #fff; text-align: center;
+    flex-shrink: 0;
+  }
+  .chat-header h1 { font-size: 22px; font-weight: 700; letter-spacing: .5px; }
+  .chat-header p { font-size: 13px; opacity: .85; margin-top: 4px; }
+
+  .chat-messages {
+    flex: 1; overflow-y: auto; padding: 20px;
+    display: flex; flex-direction: column; gap: 12px;
+    background: linear-gradient(180deg, #f8fafc 0%, var(--bg) 100%);
+  }
+  .msg {
+    max-width: 78%; padding: 13px 18px;
+    border-radius: 20px; font-size: 14.5px;
+    line-height: 1.75; white-space: pre-wrap;
+    animation: fadeSlide .3s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+  @keyframes fadeSlide {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .msg.bot {
+    align-self: flex-start;
+    background: var(--card); color: var(--text);
+    border-bottom-left-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: var(--user-bg); color: #fff;
+    border-bottom-right-radius: 6px;
+  }
+
+  .chat-input-area {
+    display: flex; gap: 10px;
+    padding: 14px 20px;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .chat-input-area input {
+    flex: 1; padding: 13px 18px;
+    border: 2px solid var(--border);
+    border-radius: 14px; font-size: 15px;
+    outline: none; transition: border-color .2s;
+  }
+  .chat-input-area input:focus { border-color: var(--primary); }
+  .chat-input-area button {
+    padding: 13px 28px;
+    background: var(--primary); color: #fff;
+    border: none; border-radius: 14px;
+    font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: background .2s;
+    white-space: nowrap;
+  }
+  .chat-input-area button:hover { background: var(--primary-dark); }
+
+  /* ===== My Reservations Tab ===== */
+  #myTab { height: calc(100vh - 55px); overflow-y: auto; }
+  .has-banner #myTab { height: calc(100vh - 55px - 38px); }
+  .my-header {
+    padding: 20px 24px;
+    background: linear-gradient(135deg, var(--accent), #0d9488);
+    color: #fff; text-align: center;
+    flex-shrink: 0;
+  }
+  .my-header h1 { font-size: 22px; font-weight: 700; }
+  .my-header p { font-size: 13px; opacity: .85; margin-top: 4px; }
+
+  .my-body { padding: 20px; }
+
+  .admin-toolbar {
+    display: flex; gap: 10px; margin-bottom: 18px;
+    flex-wrap: wrap; align-items: center;
+  }
+  .admin-toolbar input {
+    flex: 1; min-width: 180px; padding: 11px 16px;
+    border: 2px solid var(--border); border-radius: 12px;
+    font-size: 14px; outline: none; transition: border-color .2s;
+  }
+  .admin-toolbar input:focus { border-color: var(--accent); }
+  .btn-action {
+    padding: 11px 20px; color: #fff;
+    border: none; border-radius: 12px; cursor: pointer;
+    font-size: 14px; font-weight: 600; transition: background .2s;
+    white-space: nowrap;
+  }
+  .btn-refresh { background: var(--accent); }
+  .btn-refresh:hover { background: var(--accent-dark); }
+  .btn-export { background: var(--primary); }
+  .btn-export:hover { background: var(--primary-dark); }
+  .btn-import { background: var(--warning); }
+  .btn-import:hover { background: #d97706; }
+
+  .stats-bar {
+    display: flex; gap: 14px; margin-bottom: 18px; flex-wrap: wrap;
+  }
+  .stat-card {
+    flex: 1; min-width: 140px;
+    background: var(--card); border-radius: 14px;
+    padding: 16px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    border: 1px solid var(--border);
+  }
+  .stat-card .stat-num { font-size: 28px; font-weight: 700; color: var(--primary); }
+  .stat-card .stat-label { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+
+  .res-table {
+    width: 100%; border-collapse: collapse;
+    background: var(--card); border-radius: 14px;
+    overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    border: 1px solid var(--border);
+  }
+  .res-table th {
+    background: #f8fafc; padding: 13px 16px;
+    text-align: left; font-size: 13px;
+    color: var(--text-light); font-weight: 600;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+  }
+  .res-table td {
+    padding: 13px 16px; font-size: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .res-table tr:last-child td { border-bottom: none; }
+  .res-table tr:hover td { background: #f8fafc; }
+
+  .status-badge {
+    display: inline-block; padding: 3px 10px;
+    border-radius: 20px; font-size: 12px; font-weight: 600;
+  }
+  .status-active { background: #d1fae5; color: #065f46; }
+  .status-cancelled { background: #fee2e2; color: #991b1b; }
+
+  .empty-state {
+    text-align: center; padding: 60px 20px;
+    color: var(--text-light); font-size: 15px; line-height: 1.8;
+  }
+
+  .file-input-hidden { display: none; }
+
+  @media (max-width: 640px) {
+    .msg { max-width: 92%; font-size: 14px; }
+    .chat-header h1, .my-header h1 { font-size: 18px; }
+    .res-table { font-size: 13px; }
+    .res-table th, .res-table td { padding: 10px 10px; }
+    .stat-card .stat-num { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Config Banner (shown when SCRIPT_URL is not set) -->
+<div class="config-banner" id="configBanner" style="display:none;">
+  Google Sheets 未連携：セットアップガイドを参照してURLを設定してください
+</div>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('chat')">チャット予約</button>
+  <button class="tab-btn" onclick="switchTab('my')">マイ予約</button>
+</div>
+
+<!-- ===== Chat Tab ===== -->
+<div id="chatTab" class="tab-content active">
+  <div class="chat-header">
+    <h1>予約受付チャットボット</h1>
+    <p>会話形式で簡単に予約・変更・キャンセルできます</p>
+  </div>
+  <div class="chat-messages" id="messages"></div>
+  <div class="chat-input-area">
+    <input type="text" id="userInput" placeholder="メッセージを入力..." autocomplete="off">
+    <button onclick="sendMessage()">送信</button>
+  </div>
+</div>
+
+<!-- ===== My Reservations Tab ===== -->
+<div id="myTab" class="tab-content">
+  <div class="my-header">
+    <h1>マイ予約</h1>
+    <p>このブラウザから登録した予約の一覧です</p>
+  </div>
+  <div class="my-body">
+    <div class="stats-bar" id="statsBar"></div>
+    <div class="admin-toolbar">
+      <input type="text" id="searchInput" placeholder="名前・予約コードで検索..." oninput="filterTable()">
+      <button class="btn-action btn-refresh" onclick="renderMyReservations()">更新</button>
+      <button class="btn-action btn-export" onclick="exportJSON()">エクスポート</button>
+      <button class="btn-action btn-import" onclick="document.getElementById('importFile').click()">インポート</button>
+      <input type="file" id="importFile" class="file-input-hidden" accept=".json" onchange="importJSON(event)">
+    </div>
+    <div id="tableContainer"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================================
+// Configuration — Google Apps Script URL を貼り付け
+// ============================================================================
+const SCRIPT_URL = '';
+
+// ============================================================================
+// Utilities
+// ============================================================================
+function generateCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+function sendToSheet(payload) {
+  if (!SCRIPT_URL) return;
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    body: JSON.stringify(payload)
+  }).catch(() => {});
+}
+
+// ============================================================================
+// Data Layer – localStorage
+// ============================================================================
+const STORAGE_KEY = 'reservation_chatbot_data';
+
+function loadData() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) {
+    try { return JSON.parse(raw); } catch { /* fall through */ }
+  }
+  return { reservations: [] };
+}
+
+function saveData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+// ============================================================================
+// Tab Switching
+// ============================================================================
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  if (tab === 'chat') {
+    document.querySelectorAll('.tab-btn')[0].classList.add('active');
+    document.getElementById('chatTab').classList.add('active');
+  } else {
+    document.querySelectorAll('.tab-btn')[1].classList.add('active');
+    document.getElementById('myTab').classList.add('active');
+    renderMyReservations();
+  }
+}
+
+// ============================================================================
+// Chat UI
+// ============================================================================
+function addMsg(text, sender) {
+  const el = document.createElement('div');
+  el.className = 'msg ' + sender;
+  el.textContent = text;
+  document.getElementById('messages').appendChild(el);
+  el.scrollIntoView({ behavior: 'smooth' });
+}
+
+function sendMessage() {
+  const inp = document.getElementById('userInput');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = '';
+  addMsg(text, 'user');
+  const reply = processMessage(text);
+  setTimeout(() => addMsg(reply, 'bot'), 200);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('userInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendMessage();
+  });
+  addMsg(HELP_TEXT_GREETING, 'bot');
+
+  if (!SCRIPT_URL) {
+    document.getElementById('configBanner').style.display = 'block';
+    document.body.classList.add('has-banner');
+  }
+});
+
+// ============================================================================
+// Chatbot Logic
+// ============================================================================
+let botState = { step: 'idle', ctx: {} };
+
+const HELP_TEXT_GREETING =
+  'いらっしゃいませ！予約受付チャットボットです。\n\n' +
+  '以下の操作ができます：\n' +
+  '・「予約」→ 新しい予約を作成\n' +
+  '・「変更」→ 既存の予約を変更\n' +
+  '・「キャンセル」→ 予約をキャンセル\n' +
+  '・「確認」→ 予約コードで内容を確認\n' +
+  '・「一覧」→ 自分の予約を表示\n\n' +
+  'どの操作をしますか？';
+
+const HELP_TEXT =
+  '以下の操作ができます：\n' +
+  '・「予約」→ 新しい予約を作成\n' +
+  '・「変更」→ 既存の予約を変更\n' +
+  '・「キャンセル」→ 予約をキャンセル\n' +
+  '・「確認」→ 予約コードで内容を確認\n' +
+  '・「一覧」→ 自分の予約を表示\n\n' +
+  'どの操作をしますか？';
+
+function resetBot() { botState = { step: 'idle', ctx: {} }; }
+
+function parseDate(t) {
+  t = t.trim().replace(/年/g, '/').replace(/月/g, '/').replace(/日/g, '');
+  let m = t.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (m) {
+    const d = new Date(+m[1], +m[2] - 1, +m[3]);
+    if (!isNaN(d)) return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+  }
+  m = t.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
+  if (m) {
+    const y = new Date().getFullYear();
+    const d = new Date(y, +m[1] - 1, +m[2]);
+    if (!isNaN(d)) return `${y}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+  }
+  return null;
+}
+
+function parseTime(t) {
+  t = t.trim().replace(/時/g, ':').replace(/分/g, '').replace(/：/g, ':');
+  let m = t.match(/^(\d{1,2}):(\d{1,2})$/);
+  if (m) return `${m[1].padStart(2, '0')}:${m[2].padStart(2, '0')}`;
+  m = t.match(/^(\d{1,2})$/);
+  if (m && +m[1] < 24) return `${m[1].padStart(2, '0')}:00`;
+  return null;
+}
+
+function processMessage(raw) {
+  const msg = raw.trim();
+  const s = botState;
+  const ctx = s.ctx;
+
+  // ---- idle ----
+  if (s.step === 'idle') {
+    if (/予約|よやく|新規/.test(msg)) {
+      s.step = 'new_name'; s.ctx = {};
+      return '新規予約ですね！\nお名前を教えてください。';
+    }
+    if (/変更|へんこう/.test(msg)) {
+      s.step = 'modify_code'; s.ctx = {};
+      return '予約の変更ですね。\n予約コードを教えてください。';
+    }
+    if (/キャンセル|取消|取り消し/.test(msg)) {
+      s.step = 'cancel_code'; s.ctx = {};
+      return '予約のキャンセルですね。\n予約コードを教えてください。';
+    }
+    if (/確認|かくにん/.test(msg)) {
+      s.step = 'check_code';
+      return '予約コードを教えてください。';
+    }
+    if (/一覧|いちらん|リスト/.test(msg)) {
+      const data = loadData();
+      const active = data.reservations.filter(r => r.status !== 'cancelled');
+      if (!active.length) return '現在、予約はありません。\n\n' + HELP_TEXT;
+      const lines = active.map(r =>
+        `[${r.code}] ${r.name}様 | ${r.date} ${r.time} | ${r.party_size}名`
+      );
+      return '現在の予約一覧：\n' + lines.join('\n') + '\n\n' + HELP_TEXT;
+    }
+    return HELP_TEXT;
+  }
+
+  // ---- new reservation flow ----
+  if (s.step === 'new_name') {
+    ctx.name = msg; s.step = 'new_date';
+    return `${msg}様ですね。\nご希望の日付を教えてください。（例: 2026/3/15）`;
+  }
+  if (s.step === 'new_date') {
+    const d = parseDate(msg);
+    if (!d) return '日付を認識できませんでした。\n「2026/3/15」や「3月15日」のように入力してください。';
+    ctx.date = d; s.step = 'new_time';
+    return `${d} ですね。\nご希望の時間を教えてください。（例: 18:00）`;
+  }
+  if (s.step === 'new_time') {
+    const t = parseTime(msg);
+    if (!t) return '時間を認識できませんでした。\n「18:00」や「18時30分」のように入力してください。';
+    ctx.time = t; s.step = 'new_party';
+    return `${t} ですね。\nご予約の人数を教えてください。`;
+  }
+  if (s.step === 'new_party') {
+    const n = msg.replace(/[名人]/g, '').trim();
+    if (!/^\d+$/.test(n) || +n < 1) return '人数を正しく入力してください。（例: 4）';
+    ctx.party_size = +n; s.step = 'new_phone';
+    return `${n}名様ですね。\nご連絡先の電話番号を教えてください。`;
+  }
+  if (s.step === 'new_phone') {
+    const ph = msg.replace(/[\s\-ー−]/g, '');
+    if (!/^\d{7,15}$/.test(ph)) return '電話番号を正しく入力してください。（例: 09012345678）';
+    ctx.phone = ph; s.step = 'new_confirm';
+    return '以下の内容で予約を登録します。よろしいですか？（はい/いいえ）\n\n' +
+      `お名前: ${ctx.name}\n日付: ${ctx.date}\n時間: ${ctx.time}\n人数: ${ctx.party_size}名\n電話番号: ${ctx.phone}`;
+  }
+  if (s.step === 'new_confirm') {
+    if (/はい|yes|ok|うん|ええ/i.test(msg)) {
+      const code = generateCode();
+      const data = loadData();
+      const res = {
+        code, name: ctx.name, date: ctx.date, time: ctx.time,
+        party_size: ctx.party_size, phone: ctx.phone,
+        created_at: new Date().toLocaleString('ja-JP'),
+        status: 'active'
+      };
+      data.reservations.push(res);
+      saveData(data);
+      sendToSheet({
+        action: 'new', code, name: ctx.name, date: ctx.date,
+        time: ctx.time, party_size: ctx.party_size, phone: ctx.phone
+      });
+      resetBot();
+      return `予約を受け付けました！\n\n` +
+        `━━━━━━━━━━━━━━━\n` +
+        `  予約コード: ${code}\n` +
+        `━━━━━━━━━━━━━━━\n\n` +
+        `このコードは変更・キャンセル時に必要です。\nスクリーンショットなどで保存してください。\n\n` + HELP_TEXT;
+    }
+    resetBot();
+    return '予約を中止しました。\n\n' + HELP_TEXT;
+  }
+
+  // ---- check ----
+  if (s.step === 'check_code') {
+    const code = msg.trim().toUpperCase();
+    if (code.length < 4) return '予約コードを正しく入力してください。（例: A3K7B2）';
+    const r = loadData().reservations.find(r => r.code === code);
+    resetBot();
+    if (!r) return `予約コード「${code}」は見つかりませんでした。\n\n` + HELP_TEXT;
+    const statusText = r.status === 'cancelled' ? '【キャンセル済み】\n' : '';
+    return `${statusText}予約コード ${r.code} の内容：\nお名前: ${r.name}\n日付: ${r.date}\n時間: ${r.time}\n人数: ${r.party_size}名\n電話番号: ${r.phone}\n\n` + HELP_TEXT;
+  }
+
+  // ---- cancel ----
+  if (s.step === 'cancel_code') {
+    const code = msg.trim().toUpperCase();
+    if (code.length < 4) return '予約コードを正しく入力してください。';
+    const r = loadData().reservations.find(r => r.code === code && r.status === 'active');
+    if (!r) { resetBot(); return `予約コード「${code}」の有効な予約が見つかりませんでした。\n\n` + HELP_TEXT; }
+    ctx.cancel_code = code; s.step = 'cancel_confirm';
+    return `以下の予約をキャンセルしますか？（はい/いいえ）\n\n[${r.code}] ${r.name}様 | ${r.date} ${r.time} | ${r.party_size}名`;
+  }
+  if (s.step === 'cancel_confirm') {
+    if (/はい|yes|ok|うん|ええ/i.test(msg)) {
+      const data = loadData();
+      const r = data.reservations.find(r => r.code === ctx.cancel_code);
+      if (r) { r.status = 'cancelled'; saveData(data); }
+      sendToSheet({ action: 'cancel', code: ctx.cancel_code });
+      resetBot();
+      return `予約 ${ctx.cancel_code} をキャンセルしました。\n\n` + HELP_TEXT;
+    }
+    resetBot();
+    return 'キャンセルを中止しました。\n\n' + HELP_TEXT;
+  }
+
+  // ---- modify ----
+  if (s.step === 'modify_code') {
+    const code = msg.trim().toUpperCase();
+    if (code.length < 4) return '予約コードを正しく入力してください。';
+    const r = loadData().reservations.find(r => r.code === code && r.status === 'active');
+    if (!r) { resetBot(); return `予約コード「${code}」の有効な予約が見つかりませんでした。\n\n` + HELP_TEXT; }
+    Object.assign(ctx, {
+      modify_code: code, name: r.name, date: r.date,
+      time: r.time, party_size: r.party_size, phone: r.phone
+    });
+    s.step = 'modify_field';
+    return `予約 ${code} の現在の内容：\n1. お名前: ${r.name}\n2. 日付: ${r.date}\n3. 時間: ${r.time}\n4. 人数: ${r.party_size}名\n5. 電話番号: ${r.phone}\n\n変更したい項目の番号を入力してください。\n（「完了」で変更を確定します）`;
+  }
+  if (s.step === 'modify_field') {
+    if (/完了|かんりょう|終了|おわり|done/i.test(msg)) {
+      s.step = 'modify_confirm';
+      return `変更後の内容：\nお名前: ${ctx.name}\n日付: ${ctx.date}\n時間: ${ctx.time}\n人数: ${ctx.party_size}名\n電話番号: ${ctx.phone}\n\nこの内容で更新しますか？（はい/いいえ）`;
+    }
+    const ch = msg.replace(/[１２３４５]/g, c => String('１２３４５'.indexOf(c) + 1));
+    if (ch === '1') { s.step = 'mod_name'; return '新しいお名前を入力してください。'; }
+    if (ch === '2') { s.step = 'mod_date'; return '新しい日付を入力してください。（例: 2026/3/20）'; }
+    if (ch === '3') { s.step = 'mod_time'; return '新しい時間を入力してください。（例: 19:00）'; }
+    if (ch === '4') { s.step = 'mod_party'; return '新しい人数を入力してください。'; }
+    if (ch === '5') { s.step = 'mod_phone'; return '新しい電話番号を入力してください。'; }
+    return '1〜5の番号か「完了」を入力してください。';
+  }
+  if (s.step === 'mod_name') {
+    ctx.name = msg; s.step = 'modify_field';
+    return `お名前を「${msg}」に変更しました。\n他に変更があれば番号を、なければ「完了」と入力してください。`;
+  }
+  if (s.step === 'mod_date') {
+    const d = parseDate(msg);
+    if (!d) return '日付を認識できませんでした。「2026/3/20」のように入力してください。';
+    ctx.date = d; s.step = 'modify_field';
+    return `日付を「${d}」に変更しました。\n他に変更があれば番号を、なければ「完了」と入力してください。`;
+  }
+  if (s.step === 'mod_time') {
+    const t = parseTime(msg);
+    if (!t) return '時間を認識できませんでした。「19:00」のように入力してください。';
+    ctx.time = t; s.step = 'modify_field';
+    return `時間を「${t}」に変更しました。\n他に変更があれば番号を、なければ「完了」と入力してください。`;
+  }
+  if (s.step === 'mod_party') {
+    const n = msg.replace(/[名人]/g, '').trim();
+    if (!/^\d+$/.test(n) || +n < 1) return '人数を正しく入力してください。';
+    ctx.party_size = +n; s.step = 'modify_field';
+    return `人数を「${n}名」に変更しました。\n他に変更があれば番号を、なければ「完了」と入力してください。`;
+  }
+  if (s.step === 'mod_phone') {
+    const ph = msg.replace(/[\s\-ー−]/g, '');
+    if (!/^\d{7,15}$/.test(ph)) return '電話番号を正しく入力してください。';
+    ctx.phone = ph; s.step = 'modify_field';
+    return `電話番号を「${ph}」に変更しました。\n他に変更があれば番号を、なければ「完了」と入力してください。`;
+  }
+  if (s.step === 'modify_confirm') {
+    if (/はい|yes|ok|うん|ええ/i.test(msg)) {
+      const data = loadData();
+      const r = data.reservations.find(r => r.code === ctx.modify_code);
+      if (r) {
+        r.name = ctx.name; r.date = ctx.date; r.time = ctx.time;
+        r.party_size = ctx.party_size; r.phone = ctx.phone;
+        r.updated_at = new Date().toLocaleString('ja-JP');
+        saveData(data);
+      }
+      sendToSheet({
+        action: 'modify', code: ctx.modify_code, name: ctx.name,
+        date: ctx.date, time: ctx.time, party_size: ctx.party_size, phone: ctx.phone
+      });
+      resetBot();
+      return `予約 ${ctx.modify_code} を更新しました！\n\n` + HELP_TEXT;
+    }
+    resetBot();
+    return '変更を中止しました。\n\n' + HELP_TEXT;
+  }
+
+  resetBot();
+  return HELP_TEXT;
+}
+
+// ============================================================================
+// My Reservations Panel
+// ============================================================================
+function renderMyReservations() {
+  const data = loadData();
+  const reservations = data.reservations;
+  const active = reservations.filter(r => r.status === 'active');
+
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${active.length}</div><div class="stat-label">有効な予約</div></div>
+    <div class="stat-card"><div class="stat-num">${reservations.length - active.length}</div><div class="stat-label">キャンセル済み</div></div>
+    <div class="stat-card"><div class="stat-num">${active.reduce((s, r) => s + r.party_size, 0)}</div><div class="stat-label">合計人数</div></div>
+  `;
+  renderTable(reservations);
+}
+
+function renderTable(list) {
+  const c = document.getElementById('tableContainer');
+  if (!list.length) {
+    c.innerHTML = '<div class="empty-state">予約はまだありません。<br>チャットから「予約」と入力して予約を追加してください。</div>';
+    return;
+  }
+  let h = `<table class="res-table"><thead><tr>
+    <th>予約コード</th><th>お名前</th><th>日付</th><th>時間</th><th>人数</th><th>電話番号</th><th>ステータス</th>
+  </tr></thead><tbody>`;
+  for (const r of list) {
+    const badge = r.status === 'active'
+      ? '<span class="status-badge status-active">受付済み</span>'
+      : '<span class="status-badge status-cancelled">キャンセル</span>';
+    h += `<tr>
+      <td><strong>${esc(r.code)}</strong></td><td>${esc(r.name)}</td><td>${r.date}</td><td>${r.time}</td>
+      <td>${r.party_size}名</td><td>${esc(r.phone)}</td><td>${badge}</td>
+    </tr>`;
+  }
+  h += '</tbody></table>';
+  c.innerHTML = h;
+}
+
+function filterTable() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const data = loadData();
+  if (!q) { renderTable(data.reservations); return; }
+  renderTable(data.reservations.filter(r =>
+    r.name.toLowerCase().includes(q) || r.code.toLowerCase().includes(q) || r.phone.includes(q)
+  ));
+}
+
+// ============================================================================
+// Export / Import
+// ============================================================================
+function exportJSON() {
+  const data = loadData();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `マイ予約_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importJSON(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function (ev) {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!data.reservations || !Array.isArray(data.reservations)) {
+        alert('無効なファイル形式です。');
+        return;
+      }
+      if (!confirm(`${data.reservations.length}件の予約データをインポートします。\n現在のデータは上書きされます。よろしいですか？`)) return;
+      saveData(data);
+      renderMyReservations();
+      alert('インポートが完了しました。');
+    } catch {
+      alert('JSONファイルの読み込みに失敗しました。');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+</script>
+</body>
+</html>

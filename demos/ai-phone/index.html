@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>AI電話対応システム｜デモ</title>
+<style>
+:root{--navy:#1A2B4A;--blue:#3A7BD5;--orange:#F5A623;--red:#ef4444;--green:#22c55e;--bg:#F0F4F8;--white:#fff;--border:#D8E3F0;--muted:#6B7A99;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Hiragino Maru Gothic ProN','Yu Gothic',sans-serif;background:var(--bg);color:var(--navy);min-height:100vh;display:flex;flex-direction:column;}
+.header{background:var(--navy);color:#fff;padding:.8rem 1.4rem;display:flex;align-items:center;gap:.9rem;}
+.header h1{font-size:.95rem;font-weight:700;}
+.header p{font-size:.7rem;color:rgba(255,255,255,.55);}
+.demo-badge{margin-left:auto;background:#8b5cf6;color:#fff;font-size:.68rem;font-weight:700;padding:.3rem .9rem;border-radius:999px;}
+
+.main{display:flex;gap:1rem;padding:1rem;flex:1;align-items:flex-start;}
+.col-l{width:200px;flex-shrink:0;display:flex;flex-direction:column;gap:.85rem;}
+.col-c{flex:1;display:flex;flex-direction:column;gap:.85rem;}
+.col-r{width:240px;flex-shrink:0;display:flex;flex-direction:column;gap:.85rem;}
+
+.card{background:var(--white);border-radius:12px;padding:1rem;box-shadow:0 2px 8px rgba(26,43,74,.07);}
+.card-title{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.8rem;}
+
+/* 電話パネル */
+.phone-panel{background:linear-gradient(145deg,#1e2d4a,#2a3f6a);border-radius:16px;padding:1.2rem 1rem;color:#fff;text-align:center;}
+.phone-status{font-size:.65rem;letter-spacing:.1em;opacity:.7;margin-bottom:.5rem;}
+.phone-icon{font-size:2.4rem;margin:.4rem 0;animation:phonePulse 1.5s infinite;}
+@keyframes phonePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+.phone-number{font-size:.8rem;font-weight:700;margin-bottom:.3rem;}
+.phone-timer{font-size:1.1rem;font-weight:800;font-variant-numeric:tabular-nums;color:#93c5fd;}
+.phone-incoming{background:var(--green);color:#fff;border:none;border-radius:999px;padding:.5rem 1.2rem;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:.6rem;width:100%;}
+.phone-incoming:hover{background:#16a34a;}
+.phone-incoming:disabled{background:#6b7280;cursor:not-allowed;}
+
+/* シナリオ選択 */
+.scenario-btn{width:100%;padding:.5rem .7rem;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit;color:var(--navy);margin-bottom:.4rem;text-align:left;transition:all .15s;}
+.scenario-btn:hover{border-color:var(--blue);background:#eef4ff;}
+.scenario-btn.active{border-color:var(--blue);background:#dbeafe;color:var(--blue);}
+.scenario-btn:disabled{opacity:.5;cursor:not-allowed;}
+
+/* 会話エリア */
+.chat-area{min-height:360px;max-height:400px;overflow-y:auto;display:flex;flex-direction:column;gap:.6rem;padding:.5rem 0;}
+.bubble-wrap{display:flex;align-items:flex-end;gap:.5rem;}
+.bubble-wrap.user{flex-direction:row-reverse;}
+.bubble-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;}
+.av-customer{background:#e0e7ff;}
+.av-ai{background:linear-gradient(135deg,#3A7BD5,#2a5fb5);color:#fff;font-size:.65rem;font-weight:700;}
+.bubble{max-width:78%;padding:.55rem .75rem;border-radius:14px;font-size:.8rem;line-height:1.55;}
+.bubble.customer{background:#f1f5f9;border-bottom-right-radius:4px;}
+.bubble.ai{background:linear-gradient(135deg,#3A7BD5,#1e4fa8);color:#fff;border-bottom-left-radius:4px;}
+.bubble.system{background:#fef3c7;color:#92400e;font-size:.72rem;border-radius:8px;padding:.4rem .65rem;text-align:center;width:100%;}
+.bubble-time{font-size:.58rem;color:var(--muted);margin-bottom:.15rem;padding:0 .2rem;}
+
+/* 入力中... */
+.typing{display:flex;align-items:center;gap:3px;padding:.5rem .75rem;background:linear-gradient(135deg,#3A7BD5,#1e4fa8);border-radius:14px;border-bottom-left-radius:4px;width:fit-content;}
+.typing span{width:6px;height:6px;background:rgba(255,255,255,.7);border-radius:50%;animation:typingDot 1.2s infinite;}
+.typing span:nth-child(2){animation-delay:.2s;}
+.typing span:nth-child(3){animation-delay:.4s;}
+@keyframes typingDot{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}}
+
+/* 転送・ステータス */
+.status-row{display:flex;align-items:center;gap:.5rem;font-size:.73rem;padding:.45rem .6rem;border-radius:8px;border:1.5px solid var(--border);margin-bottom:.4rem;}
+.status-row .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.status-active{border-color:#bfdbfe;background:#eff6ff;}
+.status-done{border-color:#bbf7d0;background:#f0fdf4;}
+.status-wait{border-color:var(--border);background:#fafafa;opacity:.5;}
+
+/* 対応ログ（右） */
+.log-list{display:flex;flex-direction:column;gap:.4rem;max-height:260px;overflow-y:auto;}
+.log-item{display:flex;align-items:flex-start;gap:.45rem;padding:.45rem .55rem;border-radius:8px;font-size:.7rem;border:1px solid var(--border);}
+.log-badge{font-size:.58rem;font-weight:700;padding:.1rem .4rem;border-radius:4px;white-space:nowrap;flex-shrink:0;}
+.lb-complaint{background:#fee2e2;color:#991b1b;}
+.lb-inquiry{background:#dbeafe;color:#1e40af;}
+.lb-escalate{background:#fef3c7;color:#92400e;}
+.lb-resolved{background:#dcfce7;color:#15803d;}
+
+/* 指標カード */
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;}
+.metric{padding:.6rem .7rem;border-radius:10px;text-align:center;}
+.metric-val{font-size:1.3rem;font-weight:800;line-height:1;}
+.metric-lbl{font-size:.6rem;color:var(--muted);margin-top:.15rem;}
+.m-blue{background:#dbeafe;}.m-blue .metric-val{color:#1d4ed8;}
+.m-green{background:#dcfce7;}.m-green .metric-val{color:#15803d;}
+.m-orange{background:#ffedd5;}.m-orange .metric-val{color:#c2410c;}
+.m-purple{background:#ede9fe;}.m-purple .metric-val{color:#6d28d9;}
+
+.fade-in{animation:fadeIn .3s ease forwards;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>📞 AI電話対応システム</h1>
+    <p>着信から一次受け・振り分け・担当転送まで自動化 — スタッフ介入は必要な場合のみ</p>
+  </div>
+  <div class="demo-badge">🤖 AI自動対応</div>
+</div>
+<div class="main">
+
+  <!-- 左：電話 + シナリオ -->
+  <div class="col-l">
+    <div class="phone-panel" id="phonePanel">
+      <div class="phone-status" id="phoneStatus">待機中</div>
+      <div class="phone-icon" id="phoneIcon">📞</div>
+      <div class="phone-number" id="phoneNumber">—</div>
+      <div class="phone-timer" id="phoneTimer">00:00</div>
+      <button class="phone-incoming" id="callBtn" onclick="startCall()">📲 着信シミュレート</button>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 シナリオ選択</div>
+      <button class="scenario-btn active" id="sc0" onclick="selectScenario(0)">🛒 商品クレーム</button>
+      <button class="scenario-btn" id="sc1" onclick="selectScenario(1)">⏰ 営業時間問い合わせ</button>
+      <button class="scenario-btn" id="sc2" onclick="selectScenario(2)">🎁 ポイント・特典</button>
+      <button class="scenario-btn" id="sc3" onclick="selectScenario(3)">🚨 緊急クレーム（転送）</button>
+    </div>
+  </div>
+
+  <!-- 中央：会話 -->
+  <div class="col-c">
+    <div class="card" style="flex:1;display:flex;flex-direction:column;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;">
+        <div class="card-title" style="margin-bottom:0">💬 通話トランスクリプト（自動生成）</div>
+        <div id="callLabel" style="font-size:.65rem;color:var(--muted)">シナリオを選んで着信をシミュレート</div>
+      </div>
+      <div class="chat-area" id="chatArea">
+        <div style="text-align:center;padding:2rem;color:var(--muted);font-size:.82rem;">
+          <div style="font-size:2rem;margin-bottom:.5rem">📞</div>
+          着信シミュレートを押すと<br>AIが自動で電話対応します
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右：ステータス + ログ -->
+  <div class="col-r">
+    <div class="card">
+      <div class="card-title">⚡ 対応ステータス</div>
+      <div id="statusList">
+        <div class="status-row status-wait"><span class="dot" style="background:#d1d5db"></span>着信受付</div>
+        <div class="status-row status-wait"><span class="dot" style="background:#d1d5db"></span>要件ヒアリング</div>
+        <div class="status-row status-wait"><span class="dot" style="background:#d1d5db"></span>カテゴリ判定</div>
+        <div class="status-row status-wait"><span class="dot" style="background:#d1d5db"></span>一次回答</div>
+        <div class="status-row status-wait"><span class="dot" style="background:#d1d5db"></span>担当振り分け</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 本日の対応実績</div>
+      <div class="metrics-grid">
+        <div class="metric m-blue"><div class="metric-val" id="m-total">0</div><div class="metric-lbl">総着信</div></div>
+        <div class="metric m-green"><div class="metric-val" id="m-auto">0</div><div class="metric-lbl">AI完結</div></div>
+        <div class="metric m-orange"><div class="metric-val" id="m-escalate">0</div><div class="metric-lbl">担当転送</div></div>
+        <div class="metric m-purple"><div class="metric-val" id="m-time">—</div><div class="metric-lbl">平均対応秒</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 対応ログ</div>
+      <div class="log-list" id="logList">
+        <div style="font-size:.72rem;color:var(--muted);text-align:center;padding:.5rem">まだ対応履歴はありません</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+var currentScenario = 0;
+var callActive = false;
+var timerInterval = null;
+var timerSec = 0;
+var stats = { total: 0, auto: 0, escalate: 0, times: [] };
+var firstLog = true;
+
+var SCENARIOS = [
+  {
+    label: '🛒 商品クレーム',
+    phone: '03-XXXX-1234',
+    category: 'complaint',
+    steps: [
+      { who: 'system', text: '📞 着信：03-XXXX-1234' },
+      { who: 'ai', text: 'お電話ありがとうございます。〇〇スーパーでございます。AI音声アシスタントが対応いたします。本日はどのようなご用件でしょうか？' },
+      { who: 'customer', text: 'さっき買った鶏肉なんだけど、なんか変な臭いがして...' },
+      { who: 'ai', text: 'ご不便をおかけして大変申し訳ございません。商品の品質に関するご連絡ですね。購入された商品のパッケージに記載されているバーコード番号をお教えいただけますか？' },
+      { who: 'customer', text: '4902105... えっと、4902105047291 です' },
+      { who: 'ai', text: 'ありがとうございます。確認いたします。... 対象ロットを確認しました。同様のご連絡が本日2件入っており、品質管理担当へ報告済みです。ご購入金額の全額返金、またはお取り替えが可能です。どちらをご希望でしょうか？' },
+      { who: 'customer', text: '返金してもらえますか？' },
+      { who: 'ai', text: 'かしこまりました。本日ご来店時にサービスカウンターにてレシートをご提示いただければ、全額返金対応いたします。また、ご不便をおかけしたお詫びとして、500円分のポイントを付与いたします。他にご不明点はございますか？' },
+      { who: 'customer', text: 'わかりました。ありがとう' },
+      { who: 'system', text: '✅ AI対応完結（転送なし）— 対応時間: 約48秒', result: 'resolved' },
+    ],
+  },
+  {
+    label: '⏰ 営業時間問い合わせ',
+    phone: '090-XXXX-5678',
+    category: 'inquiry',
+    steps: [
+      { who: 'system', text: '📞 着信：090-XXXX-5678' },
+      { who: 'ai', text: 'お電話ありがとうございます。〇〇スーパーでございます。AI音声アシスタントが対応いたします。本日はどのようなご用件でしょうか？' },
+      { who: 'customer', text: '年末年始って何時まで開いてますか？' },
+      { who: 'ai', text: '年末年始の営業時間についてのご確認ですね。今年の営業スケジュールをお伝えします。12月31日（大晦日）は午前9時〜午後7時、1月1日（元日）は休業、1月2日・3日は午前10時〜午後6時の特別営業となっております。' },
+      { who: 'customer', text: 'じゃあ大晦日は7時で閉まるんですね。ありがとう' },
+      { who: 'ai', text: 'はい、12月31日は午後7時閉店です。年末のお買い物にぜひご利用ください。他にご不明な点はございますか？' },
+      { who: 'customer', text: '大丈夫です' },
+      { who: 'system', text: '✅ AI対応完結（転送なし）— 対応時間: 約32秒', result: 'resolved' },
+    ],
+  },
+  {
+    label: '🎁 ポイント・特典',
+    phone: '080-XXXX-9012',
+    category: 'inquiry',
+    steps: [
+      { who: 'system', text: '📞 着信：080-XXXX-9012' },
+      { who: 'ai', text: 'お電話ありがとうございます。〇〇スーパーでございます。AI音声アシスタントが対応いたします。本日はどのようなご用件でしょうか？' },
+      { who: 'customer', text: 'ポイントの有効期限っていつまでですか？' },
+      { who: 'ai', text: 'ポイントの有効期限についてのご確認ですね。会員番号またはお電話番号をお教えいただけますか？' },
+      { who: 'customer', text: '090-XXXX-9012 です' },
+      { who: 'ai', text: 'ありがとうございます。ご確認いたします。... お客様のポイント残高は1,240ポイントで、有効期限は2026年3月31日です。1,000ポイント以上お持ちのため、今月中に1,000円分の割引券と交換が可能です。交換をご希望の場合はアプリまたはサービスカウンターでお手続きください。' },
+      { who: 'customer', text: 'わかりました。ありがとう' },
+      { who: 'system', text: '✅ AI対応完結（転送なし）— 対応時間: 約38秒', result: 'resolved' },
+    ],
+  },
+  {
+    label: '🚨 緊急クレーム（転送）',
+    phone: '03-XXXX-7777',
+    category: 'escalate',
+    steps: [
+      { who: 'system', text: '📞 着信：03-XXXX-7777' },
+      { who: 'ai', text: 'お電話ありがとうございます。〇〇スーパーでございます。AI音声アシスタントが対応いたします。本日はどのようなご用件でしょうか？' },
+      { who: 'customer', text: 'あなたの店の食品を食べて子供が気分悪くなったんですが！！' },
+      { who: 'ai', text: '大変申し訳ございません。お子様の体調を最優先にご対応いたします。現在お子様の状態はいかがでしょうか？' },
+      { who: 'customer', text: '吐き気があって横になっています' },
+      { who: 'ai', text: '大変ご心配のことと存じます。まず、症状が続く場合は医療機関へのご相談をお勧めします。本件は健康被害の可能性があるため、ただいま店長および品質管理責任者に緊急転送いたします。少々お待ちください。' },
+      { who: 'system', text: '🔄 緊急転送中 → 店長 / 品質管理責任者', result: 'escalate' },
+      { who: 'ai', text: 'お繋ぎするまでの間、商品のパッケージはお手元に保管いただき、お子様の症状をメモしておいていただけると担当者の対応がスムーズになります。' },
+      { who: 'system', text: '📲 担当者（店長）に着信通知を送信しました — 転送完了', result: 'escalate' },
+    ],
+  },
+];
+
+function selectScenario(idx) {
+  if (callActive) return;
+  currentScenario = idx;
+  for (var i = 0; i < 4; i++) {
+    document.getElementById('sc' + i).classList.toggle('active', i === idx);
+  }
+}
+
+function startCall() {
+  if (callActive) return;
+  callActive = true;
+  var btn = document.getElementById('callBtn');
+  btn.disabled = true;
+  for (var i = 0; i < 4; i++) document.getElementById('sc' + i).disabled = true;
+
+  var sc = SCENARIOS[currentScenario];
+  document.getElementById('phoneStatus').textContent = '🔴 通話中';
+  document.getElementById('phoneIcon').textContent = '📱';
+  document.getElementById('phoneNumber').textContent = sc.phone;
+  document.getElementById('callLabel').textContent = sc.label;
+
+  // タイマー
+  timerSec = 0;
+  timerInterval = setInterval(function() {
+    timerSec++;
+    var m = String(Math.floor(timerSec / 60)).padStart(2,'0');
+    var s = String(timerSec % 60).padStart(2,'0');
+    document.getElementById('phoneTimer').textContent = m + ':' + s;
+  }, 1000);
+
+  // ステータス初期化
+  resetStatus();
+
+  // チャットクリア
+  document.getElementById('chatArea').innerHTML = '';
+
+  // ステップ再生
+  playSteps(sc.steps, 0);
+}
+
+function playSteps(steps, idx) {
+  if (idx >= steps.length) {
+    endCall(steps);
+    return;
+  }
+  var step = steps[idx];
+  var delay = 0;
+
+  if (step.who === 'ai') {
+    // タイピング表示
+    var typingEl = addTyping();
+    delay = 900 + step.text.length * 28;
+    setTimeout(function() {
+      typingEl.remove();
+      addBubble(step.who, step.text);
+      updateStatus(idx, steps.length);
+      setTimeout(function(){ playSteps(steps, idx + 1); }, 600);
+    }, delay);
+  } else if (step.who === 'customer') {
+    delay = 700;
+    setTimeout(function() {
+      addBubble(step.who, step.text);
+      updateStatus(idx, steps.length);
+      setTimeout(function(){ playSteps(steps, idx + 1); }, 500);
+    }, delay);
+  } else {
+    // system
+    delay = 400;
+    setTimeout(function() {
+      addBubble('system', step.text);
+      if (step.result === 'escalate') advanceStatus(3);
+      if (step.result === 'resolved') advanceStatus(4);
+      setTimeout(function(){ playSteps(steps, idx + 1); }, 700);
+    }, delay);
+  }
+}
+
+function endCall(steps) {
+  clearInterval(timerInterval);
+  callActive = false;
+
+  var sc = SCENARIOS[currentScenario];
+  var isEscalate = sc.category === 'escalate';
+
+  stats.total++;
+  if (isEscalate) stats.escalate++;
+  else stats.auto++;
+  stats.times.push(timerSec);
+  var avgTime = Math.round(stats.times.reduce(function(a,b){return a+b;},0) / stats.times.length);
+
+  document.getElementById('m-total').textContent    = stats.total;
+  document.getElementById('m-auto').textContent     = stats.auto;
+  document.getElementById('m-escalate').textContent = stats.escalate;
+  document.getElementById('m-time').textContent     = avgTime + 's';
+
+  document.getElementById('phoneStatus').textContent = '待機中';
+  document.getElementById('phoneIcon').textContent   = '📞';
+  document.getElementById('phoneNumber').textContent = '—';
+
+  // ログ追加
+  addLog(sc.label, sc.phone, isEscalate);
+
+  var btn = document.getElementById('callBtn');
+  btn.disabled = false;
+  btn.textContent = '📲 再シミュレート';
+  for (var i = 0; i < 4; i++) document.getElementById('sc' + i).disabled = false;
+}
+
+function addBubble(who, text) {
+  var area = document.getElementById('chatArea');
+  var wrap = document.createElement('div');
+  wrap.className = 'bubble-wrap fade-in' + (who === 'customer' ? ' user' : '');
+
+  if (who === 'system') {
+    wrap.innerHTML = '<div class="bubble system">' + text + '</div>';
+  } else {
+    var avClass = who === 'customer' ? 'av-customer' : 'av-ai';
+    var avText  = who === 'customer' ? '👤' : 'AI';
+    var bClass  = who === 'customer' ? 'customer' : 'ai';
+    wrap.innerHTML =
+      '<div class="bubble-avatar ' + avClass + '">' + avText + '</div>' +
+      '<div>' +
+        '<div class="bubble-time">' + nowTime() + '</div>' +
+        '<div class="bubble ' + bClass + '">' + text + '</div>' +
+      '</div>';
+  }
+
+  area.appendChild(wrap);
+  area.scrollTop = area.scrollHeight;
+}
+
+function addTyping() {
+  var area = document.getElementById('chatArea');
+  var wrap = document.createElement('div');
+  wrap.className = 'bubble-wrap';
+  wrap.innerHTML =
+    '<div class="bubble-avatar av-ai">AI</div>' +
+    '<div class="typing"><span></span><span></span><span></span></div>';
+  area.appendChild(wrap);
+  area.scrollTop = area.scrollHeight;
+  return wrap;
+}
+
+var statusLabels = ['着信受付','要件ヒアリング','カテゴリ判定','一次回答','担当振り分け'];
+var statusStep = -1;
+
+function resetStatus() {
+  statusStep = -1;
+  var list = document.getElementById('statusList');
+  list.innerHTML = statusLabels.map(function(l) {
+    return '<div class="status-row status-wait"><span class="dot" style="background:#d1d5db"></span>' + l + '</div>';
+  }).join('');
+  setTimeout(function(){ advanceStatus(0); }, 600);
+}
+
+function advanceStatus(upTo) {
+  if (statusStep >= upTo) return;
+  statusStep = upTo;
+  var rows = document.getElementById('statusList').querySelectorAll('.status-row');
+  rows.forEach(function(row, i) {
+    row.className = 'status-row ' + (i < upTo ? 'status-done' : i === upTo ? 'status-active' : 'status-wait');
+    var dot = row.querySelector('.dot');
+    dot.style.background = i < upTo ? '#22c55e' : i === upTo ? '#3A7BD5' : '#d1d5db';
+    if (i === upTo) dot.style.animation = 'phonePulse 1s infinite';
+    else dot.style.animation = '';
+  });
+}
+
+function updateStatus(stepIdx, total) {
+  var progress = Math.floor(stepIdx / total * 4);
+  advanceStatus(Math.min(progress, 3));
+}
+
+function addLog(label, phone, escalated) {
+  var list = document.getElementById('logList');
+  if (firstLog) { list.innerHTML = ''; firstLog = false; }
+  var badgeCls = escalated ? 'lb-escalate' : 'lb-resolved';
+  var badgeText = escalated ? '転送' : '完結';
+  var el = document.createElement('div');
+  el.className = 'log-item fade-in';
+  el.innerHTML =
+    '<span class="log-badge ' + badgeCls + '">' + badgeText + '</span>' +
+    '<div>' +
+      '<div style="font-weight:600">' + label + '</div>' +
+      '<div style="color:var(--muted)">' + phone + ' — ' + nowTime() + '</div>' +
+    '</div>';
+  list.insertBefore(el, list.firstChild);
+}
+
+function nowTime() {
+  return new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
+}
+</script>
+</body>
+</html>

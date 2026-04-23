@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI業務自動化 | nobupapa（伊東）</title>
+<meta name="description" content="中小企業向けAI業務自動化。繰り返し作業・データ収集・チャットボット構築をお任せください。全額返金保証つき。">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:   #1A2B4A;
+    --blue:   #3A7BD5;
+    --orange: #F5A623;
+    --bg:     #ECF2FF;
+    --text:   #1A2B4A;
+    --muted:  #445577;
+    --white:  #ffffff;
+    --card-shadow: 0 4px 20px rgba(26,43,74,0.10);
+  }
+
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Hiragino Maru Gothic ProN','Noto Sans JP','Yu Gothic',sans-serif; color: var(--text); background: var(--white); line-height: 1.7; }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(26,43,74,0.96); backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 5%; height: 60px;
+  }
+  nav .logo { color: var(--white); font-weight: 700; font-size: 1rem; letter-spacing: 0.05em; }
+  nav .logo span { color: var(--orange); }
+  nav ul { list-style: none; display: flex; gap: 2rem; }
+  nav ul a { color: rgba(255,255,255,0.85); text-decoration: none; font-size: 0.85rem; transition: color .2s; }
+  nav ul a:hover { color: var(--orange); }
+  nav .nav-cta { background: var(--orange); color: var(--white) !important; padding: 0.4rem 1.2rem; border-radius: 999px; font-weight: 700; }
+  nav .nav-cta:hover { background: #e09620; color: var(--white) !important; }
+
+  /* ── HERO ── */
+  #hero {
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--navy) 0%, #1e3a6e 60%, #243f7a 100%);
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 100px 5% 60px;
+    position: relative; overflow: hidden;
+  }
+  #hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 70% 50%, rgba(58,123,213,0.25) 0%, transparent 60%);
+  }
+  .hero-inner { position: relative; z-index: 1; max-width: 760px; }
+  .hero-badge {
+    display: inline-block; background: rgba(245,166,35,0.18); border: 1px solid var(--orange);
+    color: var(--orange); font-size: 0.8rem; padding: 0.3rem 1rem; border-radius: 999px;
+    letter-spacing: 0.08em; margin-bottom: 1.5rem;
+  }
+  #hero h1 { font-size: clamp(1.8rem, 5vw, 3rem); color: var(--white); font-weight: 900; line-height: 1.35; margin-bottom: 1.5rem; }
+  #hero h1 em { color: var(--orange); font-style: normal; }
+  #hero p { color: rgba(255,255,255,0.75); font-size: clamp(0.9rem, 2vw, 1.1rem); margin-bottom: 2.5rem; }
+  .btn-primary {
+    display: inline-block; background: var(--orange); color: var(--white);
+    padding: 0.9rem 2.5rem; border-radius: 999px; font-weight: 700; font-size: 1rem;
+    text-decoration: none; transition: transform .2s, box-shadow .2s;
+    box-shadow: 0 4px 20px rgba(245,166,35,0.4);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(245,166,35,0.5); }
+  .btn-secondary {
+    display: inline-block; border: 2px solid rgba(255,255,255,0.4); color: rgba(255,255,255,0.85);
+    padding: 0.9rem 2rem; border-radius: 999px; font-size: 0.95rem;
+    text-decoration: none; transition: border-color .2s, color .2s; margin-left: 1rem;
+  }
+  .btn-secondary:hover { border-color: var(--white); color: var(--white); }
+  .hero-note { margin-top: 2rem; font-size: 0.8rem; color: rgba(255,255,255,0.5); }
+
+  /* ── SECTION BASE ── */
+  section { padding: 80px 5%; }
+  .section-title { text-align: center; margin-bottom: 3rem; }
+  .section-title h2 { font-size: clamp(1.4rem, 3vw, 2rem); color: var(--navy); font-weight: 900; margin-bottom: 0.5rem; }
+  .section-title h2 span { color: var(--blue); }
+  .section-title p { color: var(--muted); font-size: 0.95rem; }
+
+  /* ── PAIN ── */
+  #pain { background: var(--bg); }
+  .pain-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.2rem; max-width: 900px; margin: 0 auto; }
+  .pain-card {
+    background: var(--white); border-radius: 14px; padding: 1.4rem 1.6rem;
+    border-left: 4px solid var(--orange); box-shadow: var(--card-shadow);
+    display: flex; align-items: flex-start; gap: 0.8rem;
+  }
+  .pain-icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 0.1rem; }
+  .pain-card p { font-size: 0.9rem; color: var(--muted); line-height: 1.6; }
+
+  /* ── SERVICES ── */
+  #services { background: var(--white); }
+  .service-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; max-width: 1000px; margin: 0 auto; }
+  .service-card {
+    background: var(--bg); border-radius: 14px; padding: 2rem 1.8rem;
+    border-bottom: 4px solid var(--blue); box-shadow: var(--card-shadow);
+    transition: transform .2s, box-shadow .2s;
+  }
+  .service-card:hover { transform: translateY(-4px); box-shadow: 0 8px 30px rgba(26,43,74,0.15); }
+  .service-icon { font-size: 2rem; margin-bottom: 1rem; }
+  .service-card h3 { font-size: 1rem; font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; }
+  .service-card p { font-size: 0.85rem; color: var(--muted); line-height: 1.7; }
+  .service-tag { display: inline-block; background: var(--navy); color: var(--white); font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 999px; margin-top: 1rem; margin-right: 0.3rem; }
+
+  /* ── DEMOS ── */
+  #demos { background: var(--bg); }
+  .demo-section-label { text-align: center; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.1em; color: var(--muted); margin: 2.5rem 0 1rem; text-transform: uppercase; }
+  .demo-section-label span { background: var(--bg); padding: 0.3rem 1rem; border-radius: 999px; }
+  .demo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.2rem; max-width: 1200px; margin: 0 auto; }
+  .demo-card {
+    background: var(--white); border-radius: 14px; overflow: hidden;
+    box-shadow: var(--card-shadow); transition: transform .2s;
+  }
+  .demo-card:hover { transform: translateY(-4px); }
+  .demo-card.coming-soon { opacity: 0.6; pointer-events: none; }
+  .demo-thumb {
+    height: 120px; display: flex; align-items: center; justify-content: center;
+    font-size: 2.4rem; position: relative;
+  }
+  .demo-thumb.blue   { background: linear-gradient(135deg, #1A2B4A, #3A7BD5); }
+  .demo-thumb.green  { background: linear-gradient(135deg, #1a4a2b, #2d9e6e); }
+  .demo-thumb.orange { background: linear-gradient(135deg, #7a3a00, #e07820); }
+  .demo-thumb.purple { background: linear-gradient(135deg, #2b1a4a, #7b3ad5); }
+  .demo-thumb.teal   { background: linear-gradient(135deg, #1a3a4a, #2d8e9e); }
+  .demo-thumb.red    { background: linear-gradient(135deg, #4a1a1a, #d55a3a); }
+  .demo-thumb.gold   { background: linear-gradient(135deg, #3a2b1a, #d5a623); }
+  .demo-thumb.gray   { background: linear-gradient(135deg, #2a2a2a, #666); }
+  .demo-badge {
+    position: absolute; top: 8px; right: 8px;
+    font-size: 0.65rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 999px;
+  }
+  .demo-badge.live    { background: #22c55e; color: #fff; }
+  .demo-badge.coming  { background: rgba(255,255,255,0.25); color: #fff; }
+  .demo-body { padding: 1.2rem; }
+  .demo-body h3 { font-size: 0.88rem; font-weight: 700; color: var(--navy); margin-bottom: 0.4rem; }
+  .demo-body p { font-size: 0.78rem; color: var(--muted); line-height: 1.6; margin-bottom: 0.8rem; }
+  .demo-link { font-size: 0.8rem; color: var(--blue); text-decoration: none; font-weight: 700; }
+  .demo-link:hover { text-decoration: underline; }
+
+  /* ── GUARANTEE ── */
+  #guarantee { background: #FFFBF0; border-top: 4px solid var(--orange); }
+  .guarantee-inner { max-width: 680px; margin: 0 auto; text-align: center; }
+  .guarantee-badge { font-size: 3rem; margin-bottom: 1rem; }
+  #guarantee h2 { font-size: clamp(1.3rem, 3vw, 1.8rem); color: var(--navy); font-weight: 900; margin-bottom: 1rem; }
+  #guarantee p { color: var(--muted); font-size: 0.95rem; line-height: 1.9; }
+
+  /* ── ABOUT ── */
+  #about { background: var(--white); }
+  .about-inner { display: flex; align-items: center; gap: 3rem; max-width: 860px; margin: 0 auto; flex-wrap: wrap; }
+  .about-avatar {
+    width: 160px; height: 160px; border-radius: 50%; flex-shrink: 0;
+    background: #f5f0e8;
+    overflow: hidden;
+    border: 4px solid var(--blue);
+    box-shadow: 0 6px 24px rgba(58,123,213,0.18);
+  }
+  .about-avatar img {
+    width: 100%; height: 100%; object-fit: cover; object-position: center top;
+  }
+  .about-text h2 { font-size: 1.3rem; font-weight: 900; color: var(--navy); margin-bottom: 0.3rem; }
+  .about-text .about-sub { font-size: 0.85rem; color: var(--blue); font-weight: 700; margin-bottom: 1rem; }
+  .about-text p { font-size: 0.9rem; color: var(--muted); line-height: 1.9; margin-bottom: 1rem; }
+  .skill-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .skill-tag { background: var(--bg); border: 1px solid #c5d5f0; color: var(--navy); font-size: 0.78rem; padding: 0.3rem 0.8rem; border-radius: 999px; font-weight: 600; }
+
+  /* ── CONTACT ── */
+  #contact { background: var(--navy); text-align: center; }
+  #contact h2 { font-size: clamp(1.4rem, 3vw, 2rem); color: var(--white); font-weight: 900; margin-bottom: 1rem; }
+  #contact h2 span { color: var(--orange); }
+  #contact p { color: rgba(255,255,255,0.7); font-size: 0.95rem; margin-bottom: 2rem; line-height: 1.8; }
+  .contact-card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); border-radius: 16px; padding: 2.5rem; max-width: 560px; margin: 0 auto 2rem; }
+  .contact-email { color: var(--orange); font-size: 1.1rem; font-weight: 700; text-decoration: none; word-break: break-all; }
+  .contact-email:hover { text-decoration: underline; }
+  .contact-links { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem; }
+  .contact-link { color: rgba(255,255,255,0.6); font-size: 0.85rem; text-decoration: none; border: 1px solid rgba(255,255,255,0.2); padding: 0.5rem 1.2rem; border-radius: 999px; transition: all .2s; }
+  .contact-link:hover { background: rgba(255,255,255,0.1); color: var(--white); }
+  .contact-note { font-size: 0.78rem; color: rgba(255,255,255,0.35); margin-top: 1.5rem; }
+
+  /* ── FOOTER ── */
+  footer { background: #111a29; text-align: center; padding: 1.5rem; font-size: 0.78rem; color: rgba(255,255,255,0.3); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    nav ul { display: none; }
+    .btn-secondary { display: none; }
+    .about-inner { flex-direction: column; text-align: center; }
+    .about-inner .skill-tags { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">nobu<span>papa</span> AI</div>
+  <ul>
+    <li><a href="#services">サービス</a></li>
+    <li><a href="#demos">実績</a></li>
+    <li><a href="#about">プロフィール</a></li>
+    <li><a href="#contact" class="nav-cta">相談する</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">✦ AI業務自動化 / 中小企業向け</div>
+    <h1>AIで、あなたの会社の<br><em>「めんどくさい」</em>を<br>自動化します。</h1>
+    <p>繰り返し作業・データ収集・チャットボット構築まで。<br>非エンジニアの視点で、現場に寄り添った仕組みを作ります。</p>
+    <a href="#contact" class="btn-primary">無料で相談してみる →</a>
+    <a href="#services" class="btn-secondary">できることを見る</a>
+    <div class="hero-note">※ 成果に自信があるため、全額返金保証つきです</div>
+  </div>
+</section>
+
+<!-- PAIN -->
+<section id="pain">
+  <div class="section-title">
+    <h2>こんな<span>お悩み</span>、ありませんか？</h2>
+    <p>現場で働きながら感じてきた、よくある課題です</p>
+  </div>
+  <div class="pain-grid">
+    <div class="pain-card">
+      <div class="pain-icon">📋</div>
+      <p>毎日同じExcel作業を手入力している。もっと楽にならないか…</p>
+    </div>
+    <div class="pain-card">
+      <div class="pain-icon">📊</div>
+      <p>複数サイトのデータを毎朝手動でコピーしている。自動化したい…</p>
+    </div>
+    <div class="pain-card">
+      <div class="pain-icon">💬</div>
+      <p>問い合わせ対応に時間を取られすぎる。AIに任せられないか…</p>
+    </div>
+    <div class="pain-card">
+      <div class="pain-icon">🔔</div>
+      <p>重要な情報がバラバラ。LINEやSlackに自動通知できないか…</p>
+    </div>
+    <div class="pain-card">
+      <div class="pain-icon">📝</div>
+      <p>議事録・報告書の作成に毎回時間がかかる。AIで楽にしたい…</p>
+    </div>
+    <div class="pain-card">
+      <div class="pain-icon">🤷</div>
+      <p>AIを試したいが、どこから始めればいいかわからない…</p>
+    </div>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section id="services">
+  <div class="section-title">
+    <h2><span>できること</span></h2>
+    <p>現場目線で、本当に使える仕組みを作ります</p>
+  </div>
+  <div class="service-grid">
+    <div class="service-card">
+      <div class="service-icon">🤖</div>
+      <h3>業務自動化・RPA</h3>
+      <p>ブラウザ操作・フォーム入力・ファイル処理など、繰り返し作業をプログラムで自動化します。人手が不要になり、ミスも減ります。</p>
+      <span class="service-tag">Playwright</span>
+      <span class="service-tag">Node.js</span>
+    </div>
+    <div class="service-card">
+      <div class="service-icon">💡</div>
+      <h3>AIチャットボット構築</h3>
+      <p>Claude APIを活用した自社専用AIアシスタントを構築。社内FAQ・顧客対応・営業トークの自動化に対応します。</p>
+      <span class="service-tag">Claude API</span>
+      <span class="service-tag">LINE連携</span>
+    </div>
+    <div class="service-card">
+      <div class="service-icon">📈</div>
+      <h3>データ収集・分析自動化</h3>
+      <p>競合サイト・ニュース・価格情報などを定期的に自動収集し、Googleスプレッドシートへ集約。経営判断の精度が上がります。</p>
+      <span class="service-tag">スクレイピング</span>
+      <span class="service-tag">Google Sheets</span>
+    </div>
+    <div class="service-card">
+      <div class="service-icon">🔔</div>
+      <h3>LINE / Slack 通知システム</h3>
+      <p>売上・在庫・問い合わせなど、重要な情報変化を即座にLINEやSlackへ通知。見落としゼロの仕組みを作ります。</p>
+      <span class="service-tag">LINE Notify</span>
+      <span class="service-tag">Slack API</span>
+    </div>
+    <div class="service-card">
+      <div class="service-icon">📝</div>
+      <h3>AI文書・コンテンツ生成</h3>
+      <p>議事録・報告書・SNS投稿・営業メールなど、定型文書の自動生成システムを構築。ライティング工数を大幅削減します。</p>
+      <span class="service-tag">Claude API</span>
+      <span class="service-tag">AI自動化</span>
+    </div>
+    <div class="service-card">
+      <div class="service-icon">🛠️</div>
+      <h3>AI導入コンサルティング</h3>
+      <p>「何から始めればいい？」という段階から伴走。現場の業務を整理し、費用対効果の高いAI活用方針を一緒に考えます。</p>
+      <span class="service-tag">DX推進</span>
+      <span class="service-tag">現場目線</span>
+    </div>
+  </div>
+</section>
+
+<!-- DEMOS -->
+<section id="demos">
+  <div class="section-title">
+    <h2>実際に<span>作ったもの</span></h2>
+    <p>デモとして今すぐ触れるものから、作成中のものまで一覧です</p>
+  </div>
+
+  <div class="demo-section-label"><span>▼ 今すぐ触れるデモ</span></div>
+  <div class="demo-grid">
+    <div class="demo-card">
+      <div class="demo-thumb blue"><span class="demo-badge live">LIVE</span>📊</div>
+      <div class="demo-body">
+        <h3>AIログ自動分析システム</h3>
+        <p>CSVをアップロードするだけでClaude AIが異常検知・傾向分析・改善提案を自動生成。</p>
+        <a href="https://sprightly-hummingbird-cebfe8.netlify.app" target="_blank" class="demo-link">デモを触る →</a>
+      </div>
+    </div>
+    <div class="demo-card">
+      <div class="demo-thumb green"><span class="demo-badge live">LIVE</span>📅</div>
+      <div class="demo-body">
+        <h3>シフト管理・自動作成システム</h3>
+        <p>希望シフトを入力すると自動でシフト表を生成。ルール設定・調整まで一画面で完結。</p>
+        <a href="/demos/shift/" target="_blank" class="demo-link">デモを触る →</a>
+      </div>
+    </div>
+    <div class="demo-card">
+      <div class="demo-thumb purple"><span class="demo-badge live">LIVE</span>🏪</div>
+      <div class="demo-body">
+        <h3>部門別粗利×売上分析ダッシュボード</h3>
+        <p>売場フェース・利益率・売上目標を入力すると最適な展開戦略を即算出。</p>
+        <a href="/demos/profit/" target="_blank" class="demo-link">デモを触る →</a>
+      </div>
+    </div>
+    <div class="demo-card">
+      <div class="demo-thumb teal"><span class="demo-badge live">LIVE</span>📦</div>
+      <div class="demo-body">
+        <h3>欠品管理ダッシュボード</h3>
+        <p>スキャンデータをもとに欠品を記録・可視化。日別トレンド・TOP商品・部門別割合を自動集計。</p>
+        <a href="/demos/stockout/" target="_blank" class="demo-link">デモを触る →</a>
+      </div>
+    </div>
+    <div class="demo-card">
+      <div class="demo-thumb green"><span class="demo-badge live">LIVE</span>💬</div>
+      <div class="demo-body">
+        <h3>予約受付チャットボット</h3>
+        <p>予約・変更・キャンセルをチャットで完結。飲食・美容・クリニックなどに即導入可能。</p>
+        <a href="/demos/chatbot/" target="_blank" class="demo-link">デモを触る →</a>
+      </div>
+    </div>
+    <div class="demo-card">
+      <div class="demo-thumb blue"><span class="demo-badge live">LIVE</span>🗓️</div>
+      <div class="demo-body">
+        <h3>会議室予約チャットボット</h3>
+        <p>チャットで会議室の予約・変更・空き確認が完結。総務・バックオフィス業務の自動化事例。</p>
+        <a href="https://udify.app/chat/w8eT230FhrlnlnhM" target="_blank" class="demo-link">デモを触る →</a>
+      </div>
+    </div>
+    <div class="demo-card">
+      <div class="demo-thumb purple"><span class="demo-badge live">LIVE</span>🤖</div>
+      <div class="demo-body">
+        <h3>FAQチャットボット</h3>
+        <p>よくある質問に即回答するAIボット。顧客対応・社内ヘルプデスクの一次対応を自動化。</p>
+        <a href="https://udify.app/chat/ULEATcJ5cl0eaVen" target="_blank" class="demo-link">デモを触る →</a>
+      </div>
+    </div>
+    <div class="demo-card">
+      <div class="demo-thumb gold"><span class="demo-badge live">LIVE</span>🖨️</div>
+      <div class="demo-body">
+        <h3>かんたんPOPメーカー</h3>
+        <p>商品名・価格を入力するだけでB5販促POPを自動生成。デザイン不要でその場で印刷まで完結。</p>
+        <a href="https://zippy-jelly-e2df46.netlify.app" target="_blank" class="demo-link">デモを触る →</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-section-label" style="margin-top:3rem"><span>▼ デモ作成中</span></div>
+  <div class="demo-grid">
+    <div class="demo-card">
+      <div class="demo-thumb teal"><span class="demo-badge live">LIVE</span>📖</div>
+      <div class="demo-body">
+        <h3>新人マニュアル案内ボット</h3>
+        <p>「〇〇ってどうするの？」をチャットで即解決。教育担当者の工数を大幅削減。</p>
+        <a href="/demos/manual-bot/" target="_blank" class="demo-link">デモを触る →</a>
+      </div>
+    </div>
+    <div class="demo-card coming-soon">
+      <div class="demo-thumb gray"><span class="demo-badge coming">作成中</span>📞</div>
+      <div class="demo-body">
+        <h3>クレーム初期対応ボット</h3>
+        <p>電話・チャットでの一次受けを自動化。スタッフの精神的負担を軽減。提案実績あり。</p>
+        <span class="demo-link" style="color:#999">デモ準備中...</span>
+      </div>
+    </div>
+    <div class="demo-card">
+      <div class="demo-thumb green"><span class="demo-badge live">LIVE</span>💼</div>
+      <div class="demo-body">
+        <h3>採用問い合わせ自動対応</h3>
+        <p>応募条件・シフト・給与のよくある質問を24時間自動対応。採用担当者の工数を削減。</p>
+        <a href="/demos/recruit-bot/" target="_blank" class="demo-link">デモを触る →</a>
+      </div>
+    </div>
+    <div class="demo-card">
+      <div class="demo-thumb blue"><span class="demo-badge live">LIVE</span>📈</div>
+      <div class="demo-body">
+        <h3>日次売上アラート通知システム</h3>
+        <p>売上・客数が目標を下回ったらLINE/Slackにリアルタイム通知。現場の異変を即キャッチ。</p>
+        <a href="/demos/sales-alert/" target="_blank" class="demo-link">デモを触る →</a>
+      </div>
+    </div>
+    <div class="demo-card">
+      <div class="demo-thumb orange"><span class="demo-badge live">LIVE</span>🔍</div>
+      <div class="demo-body">
+        <h3>競合価格・チラシ自動収集ツール</h3>
+        <p>競合店の特売情報をWebから自動取得してExcelに記録。価格戦略の判断を素早く。</p>
+        <a href="/demos/price-tracker/" target="_blank" class="demo-link">デモを触る →</a>
+      </div>
+    </div>
+    <div class="demo-card">
+      <div class="demo-thumb gold"><span class="demo-badge live">LIVE</span>⏰</div>
+      <div class="demo-body">
+        <h3>賞味期限アラート自動通知ツール</h3>
+        <p>期限切れ間近の商品をシステムから自動抽出して担当者へ通知。廃棄ロスを削減。</p>
+        <a href="/demos/expiry-alert/" target="_blank" class="demo-link">デモを触る →</a>
+      </div>
+    </div>
+    <div class="demo-card">
+      <div class="demo-thumb purple"><span class="demo-badge live">LIVE</span>📞</div>
+      <div class="demo-body">
+        <h3>AI電話対応システム</h3>
+        <p>スーパー向けクレーム初期対応の完全自動化。提案資料・概念調査まで完了済み。</p>
+        <a href="/demos/ai-phone/" target="_blank" class="demo-link">デモを触る →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GUARANTEE -->
+<section id="guarantee">
+  <div class="guarantee-inner">
+    <div class="guarantee-badge">🛡️</div>
+    <h2>全額返金保証つきです</h2>
+    <p>
+      私はAI・自動化の専門スクールで学びながら、日々現場で実践しています。<br>
+      それでも「駆け出し」であることは正直に伝えます。<br><br>
+      だからこそ、<strong>もし成果に満足いただけなかった場合は全額返金</strong>します。<br>
+      安心して、まずはご相談ください。
+    </p>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="section-title">
+    <h2>プロフィール</h2>
+  </div>
+  <div class="about-inner">
+    <div class="about-avatar"><img src="/img/character.png" alt="nobupapa"></div>
+    <div class="about-text">
+      <h2>nobupapa（伊東）</h2>
+      <div class="about-sub">AI業務自動化エンジニア（副業） / 40代・三姉妹の父</div>
+      <p>
+        大手スーパーの副店長として現場マネジメントを担当する傍ら、AIと業務自動化を習得。<br>
+        「非エンジニアでも作れる」を証明しながら、中小企業・個人事業主の現場課題をAIで解決しています。<br><br>
+        AIエージェント・業務自動化を専門とするスクール「アドネス スキルプラス」で継続学習中。<br>
+        Claude Code・Playwright・Google Apps Scriptを組み合わせた実用ツールを日々開発しています。
+      </p>
+      <div class="skill-tags">
+        <span class="skill-tag">Claude API</span>
+        <span class="skill-tag">Playwright</span>
+        <span class="skill-tag">Node.js</span>
+        <span class="skill-tag">Google Apps Script</span>
+        <span class="skill-tag">LINE Bot</span>
+        <span class="skill-tag">スクレイピング</span>
+        <span class="skill-tag">業務自動化</span>
+        <span class="skill-tag">AI活用コンサル</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact">
+  <h2>まずは<span>お気軽に</span>ご相談を</h2>
+  <p>「こんなことできる？」という段階でOKです。<br>現状の課題をお聞きして、AIで解決できるか一緒に考えます。<br>費用・納期の相談も無料です。</p>
+  <div class="contact-card">
+    <p style="color:rgba(255,255,255,0.5); font-size:0.82rem; margin-bottom:0.8rem;">メールでのお問い合わせ</p>
+    <a href="mailto:nobupapa20@gmail.com" class="contact-email">nobupapa20@gmail.com</a>
+    <div class="contact-links">
+      <a href="https://note.com/nobupapa20" target="_blank" class="contact-link">📝 Note</a>
+      <a href="https://scratch-lupin-a7d.notion.site/AI-30b049d89e3580799439dc5a6a593e0b" target="_blank" class="contact-link">📋 Notion詳細</a>
+      <a href="https://www.youtube.com/@nobupapa-pa-pa" target="_blank" class="contact-link">▶️ YouTube</a>
+    </div>
+  </div>
+  <div class="contact-note">通常1〜2営業日以内にご返信します</div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>© 2026 nobupapa（伊東）AI業務自動化 — All rights reserved.</p>
+</footer>
+
+</body>
+</html>

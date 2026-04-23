@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>部門フェース展開戦略ツール</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --primary: #2563eb;
+      --primary-light: #dbeafe;
+      --success: #16a34a;
+      --success-light: #dcfce7;
+      --warning: #d97706;
+      --warning-light: #fef3c7;
+      --danger: #dc2626;
+      --danger-light: #fee2e2;
+      --info: #0891b2;
+      --info-light: #cffafe;
+      --text: #1e293b;
+      --muted: #64748b;
+      --radius: 12px;
+
+      --q1: #16a34a; /* 高粗利 × 高売上 → 最優先 */
+      --q2: #2563eb; /* 高粗利 × 低売上 → 展開余地 */
+      --q3: #d97706; /* 低粗利 × 高売上 → 価格見直し */
+      --q4: #dc2626; /* 低粗利 × 低売上 → 縮小検討 */
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ===== Header ===== */
+    header {
+      background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+      color: #fff;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(0,0,0,.2);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header h1 { font-size: 1.05rem; font-weight: 800; letter-spacing: -.01em; }
+    header .subtitle { font-size: .75rem; opacity: .75; margin-top: 2px; }
+    .header-period { font-size: .78rem; opacity: .85; text-align: right; }
+
+    /* ===== Tabs ===== */
+    .tabs {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      padding: 0 20px;
+      gap: 0;
+      overflow-x: auto;
+      position: sticky;
+      top: 57px;
+      z-index: 90;
+    }
+    .tab-btn {
+      padding: 13px 18px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: .88rem;
+      color: var(--muted);
+      border-bottom: 3px solid transparent;
+      white-space: nowrap;
+      font-weight: 500;
+      transition: .15s;
+    }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
+    .tab-btn.hero { color: #1e3a8a; font-weight: 700; }
+    .tab-btn.hero.active { color: var(--primary); }
+
+    /* ===== Main ===== */
+    main { padding: 20px 24px; max-width: 1120px; margin: 0 auto; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ===== Card ===== */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      padding: 20px 24px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title .badge-new {
+      font-size: .65rem;
+      background: var(--primary);
+      color: #fff;
+      padding: 2px 7px;
+      border-radius: 20px;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    /* ===== HERO: フェース展開提案 ===== */
+    .hero-banner {
+      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 60%, #0891b2 100%);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      color: #fff;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .hero-banner h2 { font-size: 1.35rem; font-weight: 800; margin-bottom: 6px; }
+    .hero-banner p { font-size: .88rem; opacity: .85; max-width: 500px; line-height: 1.6; }
+    .hero-banner .hero-date {
+      font-size: .78rem;
+      opacity: .7;
+      margin-top: 8px;
+    }
+    .hero-tag {
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: .78rem;
+      font-weight: 600;
+    }
+
+    /* ===== Recommendation Cards ===== */
+    .rec-section-title {
+      font-size: .78rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .rec-section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .rec-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .rec-card {
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      position: relative;
+      overflow: hidden;
+      border: 2px solid transparent;
+      transition: .2s;
+    }
+    .rec-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.1); }
+    .rec-card.expand-now {
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      border-color: #86efac;
+    }
+    .rec-card.expand-potential {
+      background: linear-gradient(135deg, #eff6ff, #dbeafe);
+      border-color: #93c5fd;
+    }
+    .rec-card.review-price {
+      background: linear-gradient(135deg, #fffbeb, #fef3c7);
+      border-color: #fcd34d;
+    }
+    .rec-card.reduce {
+      background: linear-gradient(135deg, #fff1f2, #fee2e2);
+      border-color: #fca5a5;
+    }
+
+    .rec-rank {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      font-size: .72rem;
+      font-weight: 800;
+      opacity: .5;
+    }
+    .rec-action-label {
+      font-size: .72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .expand-now .rec-action-label { color: var(--success); }
+    .expand-potential .rec-action-label { color: var(--primary); }
+    .review-price .rec-action-label { color: var(--warning); }
+    .reduce .rec-action-label { color: var(--danger); }
+
+    .rec-dept { font-size: 1.4rem; font-weight: 900; color: var(--text); margin-bottom: 10px; }
+
+    .rec-metrics { display: flex; flex-direction: column; gap: 5px; }
+    .rec-metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: .82rem;
+    }
+    .rec-metric-label { color: var(--muted); }
+    .rec-metric-value { font-weight: 700; }
+
+    .rec-bar-wrap {
+      height: 6px;
+      background: rgba(0,0,0,.08);
+      border-radius: 3px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+    .rec-bar {
+      height: 100%;
+      border-radius: 3px;
+      transition: width .6s ease;
+    }
+    .expand-now .rec-bar { background: var(--success); }
+    .expand-potential .rec-bar { background: var(--primary); }
+    .review-price .rec-bar { background: var(--warning); }
+    .reduce .rec-bar { background: var(--danger); }
+
+    .rec-reason {
+      margin-top: 10px;
+      font-size: .78rem;
+      line-height: 1.5;
+      color: var(--muted);
+      border-top: 1px solid rgba(0,0,0,.06);
+      padding-top: 8px;
+    }
+
+    /* ===== Position Map ===== */
+    .map-wrap {
+      position: relative;
+      height: 380px;
+      margin-bottom: 8px;
+    }
+    .quadrant-labels {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+    }
+    .ql {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      opacity: .15;
+      border-radius: 4px;
+    }
+    .ql.q1 { color: var(--q1); }
+    .ql.q2 { color: var(--q2); }
+    .ql.q3 { color: var(--q3); }
+    .ql.q4 { color: var(--q4); }
+
+    .map-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 14px;
+      font-size: .8rem;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+    }
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    /* ===== Facing Simulator (hero) ===== */
+    .facing-sim-layout {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 20px;
+      align-items: start;
+    }
+    @media (max-width: 680px) { .facing-sim-layout { grid-template-columns: 1fr; } }
+
+    .sim-inputs { display: flex; flex-direction: column; gap: 14px; }
+
+    .form-group label {
+      display: block;
+      font-size: .8rem;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: .95rem;
+      background: var(--card);
+      color: var(--text);
+      transition: .15s;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-light);
+    }
+    .form-hint { font-size: .75rem; color: var(--muted); margin-top: 4px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 11px 22px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: .9rem;
+      font-weight: 700;
+      transition: .15s;
+      width: 100%;
+    }
+    .btn-hero {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(37,99,235,.35);
+    }
+    .btn-hero:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,99,235,.45); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { opacity: .9; }
+    .btn-outline { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); }
+    .btn-outline:hover { background: var(--primary-light); }
+    .btn-sm { padding: 8px 16px; font-size: .85rem; width: auto; }
+
+    /* ===== Facing result ===== */
+    .facing-result-box {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .facing-result-header {
+      background: linear-gradient(135deg, #1e3a8a, #2563eb);
+      color: #fff;
+      padding: 14px 18px;
+      font-size: .85rem;
+      font-weight: 700;
+    }
+    .facing-result-body { padding: 16px 18px; }
+
+    .facing-metric {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .facing-metric:last-child { border-bottom: none; }
+    .facing-metric-label { font-size: .83rem; color: var(--muted); }
+    .facing-metric-value { font-size: 1.25rem; font-weight: 800; }
+    .facing-metric-value.positive { color: var(--success); }
+    .facing-metric-value.negative { color: var(--danger); }
+    .facing-metric-value.neutral { color: var(--primary); }
+
+    .facing-highlight {
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-top: 12px;
+      border: 1px solid #86efac;
+    }
+    .facing-highlight .label { font-size: .78rem; color: var(--success); font-weight: 700; margin-bottom: 4px; }
+    .facing-highlight .value { font-size: 1.8rem; font-weight: 900; color: var(--success); }
+    .facing-highlight .sub { font-size: .78rem; color: var(--muted); margin-top: 4px; }
+
+    /* ===== Comparison bars ===== */
+    .compare-bar-section { margin-top: 16px; }
+    .compare-row { margin-bottom: 10px; }
+    .compare-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: .8rem;
+      margin-bottom: 4px;
+    }
+    .compare-label .dept { font-weight: 700; }
+    .compare-label .val { color: var(--muted); }
+    .bar-track {
+      height: 10px;
+      background: var(--bg);
+      border-radius: 5px;
+      overflow: visible;
+      position: relative;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 5px;
+      transition: width .8s cubic-bezier(.4,0,.2,1);
+    }
+    .bar-fill.q1 { background: var(--q1); }
+    .bar-fill.q2 { background: var(--q2); }
+    .bar-fill.q3 { background: var(--q3); }
+    .bar-fill.q4 { background: var(--q4); }
+
+    /* ===== KPI cards (dashboard) ===== */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .kpi-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      position: relative;
+    }
+    .kpi-card .dept-label { font-size: .78rem; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+    .kpi-card .rate { font-size: 2rem; font-weight: 900; line-height: 1; }
+    .kpi-card .sub { font-size: .76rem; color: var(--muted); margin-top: 5px; }
+    .kpi-card .status-dot {
+      position: absolute;
+      top: 12px; right: 12px;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+    .kpi-card.ok { border-left: 4px solid var(--success); }
+    .kpi-card.ok .rate { color: var(--success); }
+    .kpi-card.ok .status-dot { background: var(--success); }
+    .kpi-card.warn { border-left: 4px solid var(--warning); }
+    .kpi-card.warn .rate { color: var(--warning); }
+    .kpi-card.warn .status-dot { background: var(--warning); }
+    .kpi-card.danger { border-left: 4px solid var(--danger); }
+    .kpi-card.danger .rate { color: var(--danger); }
+    .kpi-card.danger .status-dot { background: var(--danger); }
+
+    .chart-wrap { position: relative; height: 300px; }
+
+    /* ===== Data table ===== */
+    .data-table { width: 100%; border-collapse: collapse; font-size: .87rem; }
+    .data-table th {
+      background: var(--bg);
+      padding: 9px 12px;
+      text-align: left;
+      font-size: .76rem;
+      color: var(--muted);
+      font-weight: 700;
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: #f8fafc; }
+    .badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-size: .73rem;
+      font-weight: 800;
+    }
+    .badge.ok { background: var(--success-light); color: var(--success); }
+    .badge.warn { background: var(--warning-light); color: var(--warning); }
+    .badge.danger { background: var(--danger-light); color: var(--danger); }
+
+    /* ===== Upload ===== */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 36px;
+      text-align: center;
+      cursor: pointer;
+      transition: .2s;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+    .drop-zone .icon { font-size: 2.2rem; margin-bottom: 10px; }
+    .drop-zone p { color: var(--muted); font-size: .88rem; }
+    .drop-zone strong { color: var(--primary); }
+    #file-input { display: none; }
+
+    .format-hint {
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-top: 16px;
+      font-size: .82rem;
+      color: var(--muted);
+    }
+    .format-hint code {
+      display: block;
+      margin-top: 8px;
+      font-family: "Consolas", monospace;
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 10px 14px;
+      border-radius: 6px;
+      line-height: 1.9;
+      font-size: .8rem;
+    }
+    .upload-status {
+      margin-top: 14px;
+      padding: 11px 16px;
+      border-radius: 8px;
+      font-size: .87rem;
+      display: none;
+    }
+    .upload-status.success { background: var(--success-light); color: var(--success); display: block; }
+    .upload-status.error { background: var(--danger-light); color: var(--danger); display: block; }
+
+    /* ===== Alert settings ===== */
+    .alert-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+    }
+    .alert-item {
+      background: var(--bg);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .alert-item label { font-size: .85rem; font-weight: 700; display: block; margin-bottom: 8px; }
+    .input-row { display: flex; align-items: center; gap: 8px; }
+    .input-row input[type="number"] {
+      width: 80px;
+      padding: 8px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: .95rem;
+      font-weight: 700;
+      background: var(--card);
+    }
+    .input-row span { font-size: .85rem; color: var(--muted); }
+
+    /* ===== Simulator (basic) ===== */
+    .sim-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .sim-tab {
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1.5px solid var(--border);
+      background: var(--card);
+      cursor: pointer;
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--muted);
+      transition: .15s;
+    }
+    .sim-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .sim-panel { display: none; }
+    .sim-panel.active { display: block; }
+    .sim-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+    @media (max-width: 560px) { .sim-form { grid-template-columns: 1fr; } }
+
+    .sim-result {
+      background: linear-gradient(135deg, var(--primary), #1d4ed8);
+      color: #fff;
+      border-radius: var(--radius);
+      padding: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 14px;
+    }
+    .sim-result-item .label { font-size: .78rem; opacity: .8; margin-bottom: 4px; }
+    .sim-result-item .value { font-size: 1.6rem; font-weight: 900; }
+    .sim-result-item .diff { font-size: .83rem; font-weight: 700; margin-top: 4px; }
+    .diff.up { color: #86efac; }
+    .diff.down { color: #fca5a5; }
+
+    /* ===== Mix sim ===== */
+    .mix-table { width: 100%; border-collapse: collapse; font-size: .87rem; margin-bottom: 14px; }
+    .mix-table th {
+      background: var(--bg);
+      padding: 8px 12px;
+      text-align: left;
+      font-size: .76rem;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .mix-table td { padding: 8px 12px; border-top: 1px solid var(--border); }
+    .mix-table input[type="number"] {
+      width: 78px;
+      padding: 6px 8px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-size: .87rem;
+    }
+    .mix-total {
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-size: .87rem;
+      margin-bottom: 14px;
+    }
+    .mix-total .total-rate { font-size: 1.3rem; font-weight: 900; color: var(--primary); }
+
+    /* ===== Empty state ===== */
+    .empty {
+      text-align: center;
+      padding: 50px 20px;
+      color: var(--muted);
+    }
+    .empty .icon { font-size: 2.8rem; margin-bottom: 12px; }
+    .empty p { font-size: .88rem; line-height: 1.6; }
+    .empty .empty-cta {
+      display: inline-flex;
+      margin-top: 16px;
+      padding: 10px 20px;
+      background: var(--primary);
+      color: #fff;
+      border-radius: 8px;
+      font-size: .88rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+    }
+
+    /* ===== Trend arrow ===== */
+    .trend-up { color: var(--success); font-weight: 700; }
+    .trend-down { color: var(--danger); font-weight: 700; }
+    .trend-flat { color: var(--muted); }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 640px) {
+      main { padding: 14px; }
+      .tabs { padding: 0 8px; }
+      .hero-banner h2 { font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>📦 部門フェース展開戦略ツール</h1>
+    <div class="subtitle">直近データから「伸ばすべき部門」を可視化・シミュレーション</div>
+  </div>
+  <div class="header-period" id="header-period"></div>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn hero active" data-tab="facing">🎯 フェース展開提案</button>
+  <button class="tab-btn" data-tab="dashboard">📊 ダッシュボード</button>
+  <button class="tab-btn" data-tab="upload">📂 データ取込</button>
+  <button class="tab-btn" data-tab="alerts">🔔 アラート設定</button>
+  <button class="tab-btn" data-tab="simulator">🔢 シミュレーター</button>
+</nav>
+
+<main>
+
+  <!-- ===== FACING PAGE (HERO) ===== -->
+  <div id="page-facing" class="page active">
+    <div id="facing-content"></div>
+  </div>
+
+  <!-- ===== DASHBOARD ===== -->
+  <div id="page-dashboard" class="page">
+    <div id="kpi-grid" class="kpi-grid"></div>
+    <div class="card">
+      <div class="card-title">部門別 粗利率推移</div>
+      <div id="period-label" style="font-size:.78rem;color:var(--muted);margin-bottom:12px;"></div>
+      <div class="chart-wrap"><canvas id="trend-chart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">日次データ一覧（直近7日）</div>
+      <div id="data-table-wrap">
+        <div class="empty">
+          <div class="icon">📂</div>
+          <p>「データ取込」タブからCSVをアップロードしてください</p>
+          <button class="empty-cta" onclick="switchTab('upload')">データを取り込む →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== UPLOAD ===== -->
+  <div id="page-upload" class="page">
+    <div class="card">
+      <div class="card-title">CSVファイルをアップロード</div>
+      <div class="drop-zone" id="drop-zone">
+        <div class="icon">📁</div>
+        <p><strong>クリックまたはドラッグ＆ドロップ</strong>でCSVを選択</p>
+        <p style="margin-top:5px;font-size:.78rem;">UTF-8 または Shift-JIS 対応</p>
+        <input type="file" id="file-input" accept=".csv" />
+      </div>
+      <div id="upload-status" class="upload-status"></div>
+      <div class="format-hint">
+        <strong>CSVフォーマット（1行目はヘッダー）</strong>
+        <code>日付,部門,売上,原価
+2026-03-01,青果,150000,90000
+2026-03-01,精肉,200000,130000
+2026-03-01,鮮魚,180000,111600
+2026-03-01,惣菜,120000,57600</code>
+        <div style="margin-top:10px; line-height:1.8;">
+          <strong>対応部門名：</strong> 青果 / 精肉 / 鮮魚 / 惣菜<br>
+          <strong>日付形式：</strong> YYYY-MM-DD または YYYY/MM/DD<br>
+          <strong>金額：</strong> 数値のみ（¥マーク・カンマ不要）
+        </div>
+      </div>
+      <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('file-input').click()">📂 ファイルを選択</button>
+        <button class="btn btn-outline btn-sm" onclick="loadSampleData()">🔄 サンプルデータで試す</button>
+        <button class="btn btn-sm" style="background:var(--danger-light);color:var(--danger);border:none;" onclick="clearData()">🗑️ クリア</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ALERTS ===== -->
+  <div id="page-alerts" class="page">
+    <div class="card">
+      <div class="card-title">目標粗利率の設定</div>
+      <p style="font-size:.87rem;color:var(--muted);margin-bottom:18px;">各部門の目標粗利率を設定します。実績がこの値を下回るとダッシュボードで警告を表示します。</p>
+      <div class="alert-grid" id="alert-settings"></div>
+      <div style="margin-top:18px; display:flex; gap:10px; align-items:center;">
+        <button class="btn btn-primary btn-sm" onclick="saveAlerts()">💾 保存する</button>
+        <span id="alert-save-msg" style="font-size:.83rem;color:var(--success);display:none;">✅ 保存しました</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">アラート判定基準</div>
+      <table class="data-table">
+        <thead><tr><th>ステータス</th><th>条件</th><th>表示</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge ok">達成</span></td><td>実績 ≥ 目標粗利率</td><td>緑で表示</td></tr>
+          <tr><td><span class="badge warn">注意</span></td><td>目標 − 5pt 以上〜未満</td><td>オレンジで警告</td></tr>
+          <tr><td><span class="badge danger">警告</span></td><td>目標 − 5pt 未満</td><td>赤でアラート</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== SIMULATOR ===== -->
+  <div id="page-simulator" class="page">
+    <div class="sim-tabs">
+      <button class="sim-tab active" data-sim="price">売価シミュレーション</button>
+      <button class="sim-tab" data-sim="cost">原価シミュレーション</button>
+      <button class="sim-tab" data-sim="mix">構成比シミュレーション</button>
+    </div>
+
+    <div id="sim-price" class="sim-panel active">
+      <div class="card">
+        <div class="card-title">売価を変えたときの粗利率変化</div>
+        <div class="sim-form">
+          <div class="form-group"><label>部門</label>
+            <select id="sim-price-dept"><option>青果</option><option>精肉</option><option>鮮魚</option><option>惣菜</option></select></div>
+          <div class="form-group"><label>現在の売上（円）</label>
+            <input type="number" id="sim-price-sales" placeholder="例: 150000" /></div>
+          <div class="form-group"><label>現在の原価（円）</label>
+            <input type="number" id="sim-price-cost" placeholder="例: 90000" /></div>
+          <div class="form-group"><label>売価変更率（%）</label>
+            <input type="number" id="sim-price-change" placeholder="例: +5 または -3" step="0.1" /></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="calcPriceSim()">▶ 試算する</button>
+        <div id="sim-price-result" style="margin-top:16px;"></div>
+      </div>
+    </div>
+
+    <div id="sim-cost" class="sim-panel">
+      <div class="card">
+        <div class="card-title">原価が変動したときの粗利率変化</div>
+        <div class="sim-form">
+          <div class="form-group"><label>部門</label>
+            <select id="sim-cost-dept"><option>青果</option><option>精肉</option><option>鮮魚</option><option>惣菜</option></select></div>
+          <div class="form-group"><label>現在の売上（円）</label>
+            <input type="number" id="sim-cost-sales" placeholder="例: 150000" /></div>
+          <div class="form-group"><label>現在の原価（円）</label>
+            <input type="number" id="sim-cost-cost" placeholder="例: 90000" /></div>
+          <div class="form-group"><label>原価変更率（%）</label>
+            <input type="number" id="sim-cost-change" placeholder="例: +10 または -5" step="0.1" /></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="calcCostSim()">▶ 試算する</button>
+        <div id="sim-cost-result" style="margin-top:16px;"></div>
+      </div>
+    </div>
+
+    <div id="sim-mix" class="sim-panel">
+      <div class="card">
+        <div class="card-title">部門構成比を変えたときの全体粗利率</div>
+        <p style="font-size:.84rem;color:var(--muted);margin-bottom:14px;">構成比の合計が100%になるよう設定してください。</p>
+        <table class="mix-table">
+          <thead><tr><th>部門</th><th>構成比（%）</th><th>粗利率（%）</th><th>加重粗利率</th></tr></thead>
+          <tbody id="mix-tbody"></tbody>
+        </table>
+        <div class="mix-total">
+          構成比合計: <span id="mix-ratio-total" style="font-weight:800;">0%</span>
+          &nbsp;&nbsp;&nbsp;全体粗利率: <span class="total-rate" id="mix-rate-total">0.0%</span>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="calcMixSim()">▶ 試算する</button>
+        <div id="sim-mix-result" style="margin-top:16px;"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ===== Constants =====
+const DEPTS = ['青果', '精肉', '鮮魚', '惣菜'];
+const DEPT_COLORS = { '青果': '#16a34a', '精肉': '#dc2626', '鮮魚': '#2563eb', '惣菜': '#d97706' };
+const Q_COLORS = ['#16a34a', '#2563eb', '#d97706', '#dc2626'];
+
+// ===== State =====
+let state = { records: [], targets: {} };
+let trendChart = null;
+let positionChart = null;
+
+function loadState() {
+  try {
+    const s = localStorage.getItem('sm-profit-v2');
+    if (s) state = JSON.parse(s);
+    if (!state.targets) state.targets = {};
+  } catch(e) {}
+  DEPTS.forEach(d => { if (state.targets[d] === undefined) state.targets[d] = 35; });
+}
+function saveState() { localStorage.setItem('sm-profit-v2', JSON.stringify(state)); }
+
+// ===== Tab ===== 
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const btn = document.querySelector(`[data-tab="${tab}"]`);
+  if (btn) btn.classList.add('active');
+  const page = document.getElementById('page-' + tab);
+  if (page) page.classList.add('active');
+  if (tab === 'facing') renderFacingPage();
+  if (tab === 'dashboard') renderDashboard();
+  if (tab === 'alerts') renderAlertSettings();
+  if (tab === 'simulator') renderMixTable();
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+document.querySelectorAll('.sim-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.sim-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.sim-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('sim-' + btn.dataset.sim).classList.add('active');
+  });
+});
+
+// ===== Utilities =====
+function grossMarginRate(sales, cost) {
+  if (!sales || sales === 0) return 0;
+  return ((sales - cost) / sales) * 100;
+}
+function fmt(n) { return '¥' + Math.round(n).toLocaleString(); }
+function fmtPct(n) { return n.toFixed(1) + '%'; }
+function median(arr) {
+  const s = [...arr].sort((a,b) => a-b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 !== 0 ? s[m] : (s[m-1] + s[m]) / 2;
+}
+
+// ===== Analyze latest data =====
+function analyzeLatest() {
+  if (!state.records.length) return null;
+  const dates = [...new Set(state.records.map(r => r.date))].sort();
+  const half = Math.ceil(dates.length / 2);
+  const recentDates = dates.slice(-Math.min(7, dates.length));
+  const prevDates = dates.slice(-Math.min(14, dates.length), -Math.min(7, dates.length));
+
+  const result = {};
+  DEPTS.forEach(dept => {
+    const recent = state.records.filter(r => recentDates.includes(r.date) && r.dept === dept);
+    const prev = state.records.filter(r => prevDates.includes(r.date) && r.dept === dept);
+
+    const rSales = recent.reduce((s, r) => s + r.sales, 0);
+    const rCost = recent.reduce((s, r) => s + r.cost, 0);
+    const pSales = prev.reduce((s, r) => s + r.sales, 0);
+
+    const rate = grossMarginRate(rSales, rCost);
+    const profit = rSales - rCost;
+    const trend = pSales > 0 ? (rSales - pSales) / pSales * 100 : 0;
+
+    result[dept] = { sales: rSales, cost: rCost, rate, profit, trend, hasPrev: pSales > 0 };
+  });
+  return { deptData: result, recentDates, prevDates, allDates: dates };
+}
+
+// ===== Quadrant classification =====
+function classifyDepts(deptData) {
+  const rates = DEPTS.map(d => deptData[d]?.rate || 0);
+  const sales = DEPTS.map(d => deptData[d]?.sales || 0);
+  const medRate = median(rates);
+  const medSales = median(sales);
+
+  return DEPTS.map(dept => {
+    const d = deptData[dept];
+    if (!d || !d.sales) return { dept, quadrant: 4, score: 0 };
+    const highMargin = d.rate >= medRate;
+    const highSales = d.sales >= medSales;
+    let quadrant, action, actionClass, color, reason;
+
+    if (highMargin && highSales) {
+      quadrant = 1;
+      action = '🚀 今すぐフェース拡大';
+      actionClass = 'expand-now';
+      color = Q_COLORS[0];
+      reason = `粗利率${fmtPct(d.rate)}と売上規模ともに高水準。フェースを広げるほど粗利額が積み上がる最優先部門。`;
+    } else if (highMargin && !highSales) {
+      quadrant = 2;
+      action = '📈 展開で伸びしろあり';
+      actionClass = 'expand-potential';
+      color = Q_COLORS[1];
+      reason = `粗利率${fmtPct(d.rate)}と高効率だが売上規模が小さい。フェース拡大で売上が伸びれば利益貢献度は大幅アップ。`;
+    } else if (!highMargin && highSales) {
+      quadrant = 3;
+      action = '⚠️ 価格・原価の見直しが先';
+      actionClass = 'review-price';
+      color = Q_COLORS[2];
+      reason = `売上は大きいが粗利率${fmtPct(d.rate)}は低め。拡大前にまず売価引き上げや原価交渉で粗利率改善を。`;
+    } else {
+      quadrant = 4;
+      action = '🔻 縮小・品揃え見直し';
+      actionClass = 'reduce';
+      color = Q_COLORS[3];
+      reason = `粗利率・売上ともに低水準。フェースを削って高効率な部門へ振り替えることを検討。`;
+    }
+
+    // Expand score: used for ranking within "expand" categories
+    const score = d.rate * (d.sales / Math.max(...DEPTS.map(x => deptData[x]?.sales || 1)));
+
+    return { dept, quadrant, action, actionClass, color, reason, score, ...d, medRate, medSales };
+  }).sort((a, b) => a.quadrant - b.quadrant || b.score - a.score);
+}
+
+// ===== HERO: Facing Page =====
+function renderFacingPage() {
+  const container = document.getElementById('facing-content');
+  const analysis = analyzeLatest();
+
+  if (!analysis) {
+    container.innerHTML = `
+      <div class="card">
+        <div class="empty">
+          <div class="icon">📦</div>
+          <p>データがありません。<br>まずCSVをアップロードするか、サンプルデータをお試しください。</p>
+          <button class="empty-cta" onclick="switchTab('upload')">データを取り込む →</button>
+          <button class="empty-cta" style="margin-left:10px;background:var(--muted);" onclick="loadSampleData()">サンプルで試す</button>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const { deptData, recentDates, allDates } = analysis;
+  const classified = classifyDepts(deptData);
+  const periodStr = recentDates.length > 0
+    ? `直近 ${recentDates[0]} 〜 ${recentDates[recentDates.length-1]}（${recentDates.length}日間）`
+    : '';
+
+  // Header period
+  document.getElementById('header-period').textContent = periodStr;
+
+  // Build HTML
+  const expandNow = classified.filter(c => c.quadrant === 1);
+  const expandPotential = classified.filter(c => c.quadrant === 2);
+  const reviewPrice = classified.filter(c => c.quadrant === 3);
+  const reduce = classified.filter(c => c.quadrant === 4);
+
+  const maxProfit = Math.max(...classified.map(c => c.profit));
+  const maxSales = Math.max(...classified.map(c => c.sales));
+
+  function recCard(c, rank) {
+    const trendIcon = c.hasPrev
+      ? (c.trend > 2 ? '<span class="trend-up">▲ ' + c.trend.toFixed(1) + '%</span>'
+       : c.trend < -2 ? '<span class="trend-down">▼ ' + Math.abs(c.trend).toFixed(1) + '%</span>'
+       : '<span class="trend-flat">→ 横ばい</span>')
+      : '<span class="trend-flat">-</span>';
+    return `
+      <div class="rec-card ${c.actionClass}">
+        ${rank ? `<div class="rec-rank">#${rank}</div>` : ''}
+        <div class="rec-action-label">${c.action}</div>
+        <div class="rec-dept">${c.dept}</div>
+        <div class="rec-metrics">
+          <div class="rec-metric-row">
+            <span class="rec-metric-label">粗利率</span>
+            <span class="rec-metric-value">${fmtPct(c.rate)}</span>
+          </div>
+          <div class="rec-metric-row">
+            <span class="rec-metric-label">粗利額（直近）</span>
+            <span class="rec-metric-value">${fmt(c.profit)}</span>
+          </div>
+          <div class="rec-metric-row">
+            <span class="rec-metric-label">売上トレンド</span>
+            <span class="rec-metric-value">${trendIcon}</span>
+          </div>
+        </div>
+        <div class="rec-bar-wrap">
+          <div class="rec-bar" style="width:${Math.round(c.profit/maxProfit*100)}%"></div>
+        </div>
+        <div class="rec-reason">${c.reason}</div>
+      </div>`;
+  }
+
+  let html = `
+    <div class="hero-banner">
+      <div>
+        <h2>どの部門のフェースを広げるべきか？</h2>
+        <p>直近の売上・仕入れデータをもとに、各部門の「粗利率 × 売上規模」を分析。<br>
+        フェースを広げることで最も利益が積み上がる部門を優先順位付けして提案します。</p>
+        <div class="hero-date">📅 分析期間: ${periodStr}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0;">
+        <div class="hero-tag">粗利率 × 売上規模で判定</div>
+        <div class="hero-tag">${allDates.length}日分のデータで分析</div>
+      </div>
+    </div>`;
+
+  // Expand now section
+  if (expandNow.length) {
+    html += `<div class="rec-section-title">🚀 最優先 ─ 今すぐフェース拡大すべき部門</div>`;
+    html += `<div class="rec-grid">`;
+    expandNow.forEach((c, i) => { html += recCard(c, i + 1); });
+    html += `</div>`;
+  }
+
+  if (expandPotential.length) {
+    html += `<div class="rec-section-title">📈 次点 ─ フェース拡大で伸びしろがある部門</div>`;
+    html += `<div class="rec-grid">`;
+    expandPotential.forEach(c => { html += recCard(c, null); });
+    html += `</div>`;
+  }
+
+  if (reviewPrice.length || reduce.length) {
+    html += `<div class="rec-section-title">⚠️ 要注意 ─ 拡大より改善が先決な部門</div>`;
+    html += `<div class="rec-grid">`;
+    reviewPrice.forEach(c => { html += recCard(c, null); });
+    reduce.forEach(c => { html += recCard(c, null); });
+    html += `</div>`;
+  }
+
+  // Position map
+  html += `
+    <div class="card">
+      <div class="card-title">部門ポジションマップ <span style="font-size:.75rem;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;">バブル大きさ = 粗利額</span></div>
+      <div class="map-wrap">
+        <canvas id="position-chart"></canvas>
+      </div>
+      <div class="map-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--q1)"></div>最優先展開（高粗利×高売上）</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--q2)"></div>展開余地あり（高粗利×低売上）</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--q3)"></div>価格見直し（低粗利×高売上）</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--q4)"></div>縮小検討（低粗利×低売上）</div>
+      </div>
+    </div>`;
+
+  // Profit contribution bars
+  html += `
+    <div class="card">
+      <div class="card-title">粗利貢献ランキング（直近期間）</div>
+      <div class="compare-bar-section" id="profit-bars"></div>
+    </div>`;
+
+  // Facing simulator
+  html += `
+    <div class="card">
+      <div class="card-title">フェース拡大効果シミュレーター <span class="badge-new">NEW</span></div>
+      <p style="font-size:.84rem;color:var(--muted);margin-bottom:18px;">
+        フェースを増やしたとき、どれだけ利益が増えるかを試算します。
+        <strong>「フェース弾力性」</strong>とは、フェース1%増加あたりの売上増加率の目安です（デフォルト: 0.8）。
+      </p>
+      <div class="facing-sim-layout">
+        <div class="sim-inputs">
+          <div class="form-group">
+            <label>対象部門</label>
+            <select id="fs-dept">
+              ${DEPTS.map(d => `<option value="${d}">${d}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>フェース拡大率（%）</label>
+            <input type="number" id="fs-expand" value="20" min="1" max="200" step="5" />
+            <div class="form-hint">例: 20 → フェースを現状比20%増やす</div>
+          </div>
+          <div class="form-group">
+            <label>フェース弾力性（0.5〜1.5）</label>
+            <input type="number" id="fs-elasticity" value="0.8" step="0.1" min="0.1" max="2.0" />
+            <div class="form-hint">フェース1%増 → 売上 0.8% 増（目安）。自店の実績に合わせて調整</div>
+          </div>
+          <button class="btn btn-hero" onclick="calcFacingSim()">▶ 利益増加を試算する</button>
+        </div>
+        <div id="fs-result">
+          <div class="facing-result-box">
+            <div class="facing-result-header">📊 試算結果がここに表示されます</div>
+            <div class="facing-result-body">
+              <div style="color:var(--muted);font-size:.85rem;padding:20px 0;text-align:center;">
+                左の条件を入力して「試算する」を押してください
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  container.innerHTML = html;
+
+  // Render position chart
+  requestAnimationFrame(() => {
+    renderPositionChart(classified);
+    renderProfitBars(classified, maxProfit);
+    prefillFacingSim(deptData);
+  });
+}
+
+function renderPositionChart(classified) {
+  const ctx = document.getElementById('position-chart');
+  if (!ctx) return;
+  if (positionChart) positionChart.destroy();
+
+  const medRate = classified[0]?.medRate || 35;
+  const medSales = classified[0]?.medSales || 100000;
+  const maxR = Math.max(...classified.map(c => c.profit));
+
+  const datasets = classified.map(c => ({
+    label: c.dept,
+    data: [{
+      x: parseFloat(c.rate.toFixed(1)),
+      y: c.sales,
+      r: Math.max(8, Math.round(c.profit / maxR * 40))
+    }],
+    backgroundColor: c.color + 'bb',
+    borderColor: c.color,
+    borderWidth: 2,
+  }));
+
+  positionChart = new Chart(ctx, {
+    type: 'bubble',
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const d = ctx.raw;
+              return [`${ctx.dataset.label}`, `粗利率: ${d.x}%`, `売上: ¥${d.y.toLocaleString()}`];
+            }
+          }
+        },
+        annotation: {
+          annotations: {
+            vLine: {
+              type: 'line',
+              scaleID: 'x',
+              value: medRate,
+              borderColor: '#94a3b8',
+              borderWidth: 1,
+              borderDash: [5, 5],
+            },
+            hLine: {
+              type: 'line',
+              scaleID: 'y',
+              value: medSales,
+              borderColor: '#94a3b8',
+              borderWidth: 1,
+              borderDash: [5, 5],
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: '粗利率 (%)' },
+          ticks: { callback: v => v + '%' },
+        },
+        y: {
+          title: { display: true, text: '売上 (円)' },
+          ticks: { callback: v => '¥' + (v/10000).toFixed(0) + '万' },
+        }
+      }
+    }
+  });
+
+  // Draw quadrant background after chart renders
+  setTimeout(() => {
+    const meta = positionChart.scales;
+    if (!meta) return;
+    const xVal = meta.x?.getPixelForValue(medRate);
+    const yVal = meta.y?.getPixelForValue(medSales);
+    const c2 = ctx.getContext('2d');
+    if (!xVal || !yVal) return;
+    const { left, top, right, bottom } = positionChart.chartArea;
+
+    function drawQuadLabel(text, cx, cy, color) {
+      c2.save();
+      c2.font = 'bold 11px sans-serif';
+      c2.fillStyle = color + '30';
+      c2.textAlign = 'center';
+      c2.fillText(text, cx, cy);
+      c2.restore();
+    }
+    drawQuadLabel('最優先展開', (xVal + right) / 2, (top + yVal) / 2, '#16a34a');
+    drawQuadLabel('展開余地あり', (left + xVal) / 2, (top + yVal) / 2, '#2563eb');
+    drawQuadLabel('価格見直し', (xVal + right) / 2, (yVal + bottom) / 2, '#d97706');
+    drawQuadLabel('縮小検討', (left + xVal) / 2, (yVal + bottom) / 2, '#dc2626');
+  }, 300);
+}
+
+function renderProfitBars(classified, maxProfit) {
+  const container = document.getElementById('profit-bars');
+  if (!container) return;
+  const sorted = [...classified].sort((a, b) => b.profit - a.profit);
+  const qClass = { 1: 'q1', 2: 'q2', 3: 'q3', 4: 'q4' };
+  container.innerHTML = sorted.map(c => `
+    <div class="compare-row">
+      <div class="compare-label">
+        <span class="dept">${c.dept}</span>
+        <span class="val">${fmt(c.profit)} &nbsp;（粗利率 ${fmtPct(c.rate)}）</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill ${qClass[c.quadrant]}" style="width:${Math.round(c.profit / maxProfit * 100)}%"></div>
+      </div>
+    </div>`).join('');
+}
+
+function prefillFacingSim(deptData) {
+  // Auto-select the top expand-now dept if available
+  const analysis = analyzeLatest();
+  if (!analysis) return;
+  const classified = classifyDepts(analysis.deptData);
+  const topExpand = classified.find(c => c.quadrant === 1) || classified[0];
+  if (topExpand) {
+    document.getElementById('fs-dept').value = topExpand.dept;
+  }
+}
+
+function calcFacingSim() {
+  const dept = document.getElementById('fs-dept').value;
+  const expandPct = parseFloat(document.getElementById('fs-expand').value);
+  const elasticity = parseFloat(document.getElementById('fs-elasticity').value);
+
+  if (isNaN(expandPct) || isNaN(elasticity)) { alert('数値を入力してください'); return; }
+
+  const analysis = analyzeLatest();
+  if (!analysis) { alert('データがありません'); return; }
+
+  const d = analysis.deptData[dept];
+  if (!d || !d.sales) { alert('このデータが見つかりません'); return; }
+
+  const salesIncrPct = expandPct * elasticity;
+  const newSales = d.sales * (1 + salesIncrPct / 100);
+  const newProfit = newSales - d.cost;
+  const profitDiff = newProfit - d.profit;
+  const rateDiff = grossMarginRate(newSales, d.cost) - d.rate;
+
+  const target = state.targets[dept] || 35;
+  const newRate = grossMarginRate(newSales, d.cost);
+  const isGood = newRate >= target;
+
+  document.getElementById('fs-result').innerHTML = `
+    <div class="facing-result-box">
+      <div class="facing-result-header">📊 ${dept} ─ フェース +${expandPct}% の試算結果</div>
+      <div class="facing-result-body">
+        <div class="facing-metric">
+          <span class="facing-metric-label">売上増加（予測）</span>
+          <span class="facing-metric-value neutral">+${fmt(newSales - d.sales)}</span>
+        </div>
+        <div class="facing-metric">
+          <span class="facing-metric-label">変更前 売上</span>
+          <span class="facing-metric-value">${fmt(d.sales)}</span>
+        </div>
+        <div class="facing-metric">
+          <span class="facing-metric-label">変更後 売上（予測）</span>
+          <span class="facing-metric-value neutral">${fmt(newSales)}</span>
+        </div>
+        <div class="facing-metric">
+          <span class="facing-metric-label">粗利率（変更前 → 後）</span>
+          <span class="facing-metric-value">${fmtPct(d.rate)} → ${fmtPct(newRate)}</span>
+        </div>
+        <div class="facing-highlight">
+          <div class="label">粗利額の増加（直近期間）</div>
+          <div class="value">+${fmt(profitDiff)}</div>
+          <div class="sub">
+            変更前: ${fmt(d.profit)} → 変更後: ${fmt(newProfit)}
+            ${isGood ? '　✅ 目標粗利率 ' + target + '% を達成' : '　⚠️ 目標粗利率 ' + target + '% には未達'}
+          </div>
+        </div>
+        <div style="font-size:.78rem;color:var(--muted);margin-top:12px;line-height:1.6;">
+          ※ 弾力性 ${elasticity} を使用：フェース+${expandPct}% → 売上+${salesIncrPct.toFixed(1)}% と試算<br>
+          ※ 原価は固定として計算しています
+        </div>
+      </div>
+    </div>`;
+}
+
+// ===== Dashboard =====
+function renderDashboard() {
+  if (!state.records.length) {
+    document.getElementById('kpi-grid').innerHTML = '';
+    document.getElementById('period-label').textContent = '';
+    document.getElementById('data-table-wrap').innerHTML = `
+      <div class="empty"><div class="icon">📂</div>
+      <p>「データ取込」からCSVをアップロードしてください</p>
+      <button class="empty-cta" onclick="switchTab('upload')">データを取り込む →</button></div>`;
+    if (trendChart) { trendChart.destroy(); trendChart = null; }
+    return;
+  }
+
+  const dates = [...new Set(state.records.map(r => r.date))].sort();
+  const latestDate = dates[dates.length - 1];
+  document.getElementById('period-label').textContent =
+    `データ期間: ${dates[0]} 〜 ${latestDate}（全${dates.length}日間）`;
+
+  const latestByDept = {};
+  state.records.filter(r => r.date === latestDate).forEach(r => {
+    if (!latestByDept[r.dept]) latestByDept[r.dept] = { sales: 0, cost: 0 };
+    latestByDept[r.dept].sales += r.sales;
+    latestByDept[r.dept].cost += r.cost;
+  });
+
+  const kpiGrid = document.getElementById('kpi-grid');
+  kpiGrid.innerHTML = '';
+  DEPTS.forEach(dept => {
+    const d = latestByDept[dept];
+    if (!d) return;
+    const rate = grossMarginRate(d.sales, d.cost);
+    const target = state.targets[dept] || 35;
+    const diff = rate - target;
+    const status = diff >= 0 ? 'ok' : diff >= -5 ? 'warn' : 'danger';
+    kpiGrid.innerHTML += `
+      <div class="kpi-card ${status}">
+        <div class="dept-label">${dept}</div>
+        <div class="rate">${rate.toFixed(1)}%</div>
+        <div class="sub">目標 ${target}% / ${diff >= 0 ? '+' : ''}${diff.toFixed(1)}pt</div>
+        <div class="sub">売上 ¥${d.sales.toLocaleString()}</div>
+        <div class="status-dot"></div>
+      </div>`;
+  });
+
+  const datasets = DEPTS.map(dept => {
+    const data = dates.map(date => {
+      const recs = state.records.filter(r => r.date === date && r.dept === dept);
+      if (!recs.length) return null;
+      const s = recs.reduce((a, r) => a + r.sales, 0);
+      const c = recs.reduce((a, r) => a + r.cost, 0);
+      return parseFloat(grossMarginRate(s, c).toFixed(1));
+    });
+    return {
+      label: dept, data,
+      borderColor: DEPT_COLORS[dept],
+      backgroundColor: DEPT_COLORS[dept] + '20',
+      tension: 0.3, fill: false, pointRadius: 4
+    };
+  });
+
+  const ctx = document.getElementById('trend-chart').getContext('2d');
+  if (trendChart) trendChart.destroy();
+  trendChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: dates.map(d => d.slice(5)), datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y}%` } }
+      },
+      scales: {
+        y: { title: { display: true, text: '粗利率 (%)' }, ticks: { callback: v => v + '%' } }
+      }
+    }
+  });
+
+  const recent = dates.slice(-7);
+  const rows = state.records
+    .filter(r => recent.includes(r.date))
+    .sort((a, b) => b.date.localeCompare(a.date) || DEPTS.indexOf(a.dept) - DEPTS.indexOf(b.dept));
+
+  let tableHtml = `<table class="data-table"><thead><tr>
+    <th>日付</th><th>部門</th><th>売上</th><th>原価</th><th>粗利</th><th>粗利率</th><th>状態</th>
+  </tr></thead><tbody>`;
+  rows.forEach(r => {
+    const margin = r.sales - r.cost;
+    const rate = grossMarginRate(r.sales, r.cost);
+    const target = state.targets[r.dept] || 35;
+    const diff = rate - target;
+    const status = diff >= 0 ? 'ok' : diff >= -5 ? 'warn' : 'danger';
+    const badge = diff >= 0 ? '達成' : diff >= -5 ? '注意' : '警告';
+    tableHtml += `<tr>
+      <td>${r.date}</td><td>${r.dept}</td>
+      <td>¥${r.sales.toLocaleString()}</td><td>¥${r.cost.toLocaleString()}</td>
+      <td>¥${margin.toLocaleString()}</td>
+      <td style="font-weight:800;">${rate.toFixed(1)}%</td>
+      <td><span class="badge ${status}">${badge}</span></td>
+    </tr>`;
+  });
+  tableHtml += '</tbody></table>';
+  document.getElementById('data-table-wrap').innerHTML = tableHtml;
+}
+
+// ===== CSV Upload =====
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) readCSV(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) readCSV(e.target.files[0]); });
+
+function readCSV(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try { parseCSV(e.target.result); }
+    catch(err) { showUploadStatus('error', 'エラー: ' + err.message); }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) throw new Error('データが1行も見つかりません');
+  const header = lines[0].split(',').map(s => s.trim().replace(/^["']|["']$/g, ''));
+  const colMap = {};
+  header.forEach((h, i) => {
+    if (/日付|date/i.test(h)) colMap.date = i;
+    if (/部門|dept/i.test(h)) colMap.dept = i;
+    if (/売上|sales/i.test(h)) colMap.sales = i;
+    if (/原価|cost/i.test(h)) colMap.cost = i;
+  });
+  if ([colMap.date, colMap.dept, colMap.sales, colMap.cost].some(v => v === undefined))
+    throw new Error('必要な列（日付・部門・売上・原価）が見つかりません');
+
+  const records = []; let errors = 0;
+  for (let i = 1; i < lines.length; i++) {
+    const row = lines[i].split(',').map(s => s.trim().replace(/^["']|["']$/g, ''));
+    if (!row[colMap.date]) continue;
+    const date = row[colMap.date].replace(/\//g, '-');
+    const dept = row[colMap.dept];
+    const sales = parseFloat(row[colMap.sales]?.replace(/[,¥￥]/g, ''));
+    const cost = parseFloat(row[colMap.cost]?.replace(/[,¥￥]/g, ''));
+    if (!date || !dept || isNaN(sales) || isNaN(cost)) { errors++; continue; }
+    records.push({ date, dept, sales, cost });
+  }
+  if (!records.length) throw new Error('有効なデータが見つかりませんでした');
+  state.records = records;
+  saveState();
+  showUploadStatus('success', `✅ ${records.length}件読み込み完了${errors ? '（' + errors + '件スキップ）' : ''}`);
+  renderFacingPage();
+}
+
+function showUploadStatus(type, msg) {
+  const el = document.getElementById('upload-status');
+  el.className = 'upload-status ' + type;
+  el.textContent = msg;
+}
+
+function clearData() {
+  if (!confirm('データをすべて削除しますか？')) return;
+  state.records = [];
+  saveState();
+  renderFacingPage();
+  showUploadStatus('success', '🗑️ クリアしました');
+}
+
+function loadSampleData() {
+  const base = { '青果': [150000, 87000], '精肉': [200000, 132000], '鮮魚': [180000, 109800], '惣菜': [120000, 57600] };
+  const records = [];
+  for (let d = 0; d < 14; d++) {
+    const date = new Date(2026, 2, 1 + d).toISOString().slice(0, 10);
+    DEPTS.forEach(dept => {
+      const [bs, bc] = base[dept];
+      const sv = 1 + (Math.random() - 0.45) * 0.22;
+      const cv = 1 + (Math.random() - 0.5) * 0.14;
+      records.push({ date, dept, sales: Math.round(bs * sv), cost: Math.round(bc * cv) });
+    });
+  }
+  state.records = records;
+  saveState();
+  showUploadStatus('success', `✅ サンプルデータ（${records.length}件）を読み込みました`);
+  switchTab('facing');
+}
+
+// ===== Alert Settings =====
+function renderAlertSettings() {
+  const container = document.getElementById('alert-settings');
+  container.innerHTML = '';
+  DEPTS.forEach(dept => {
+    const val = state.targets[dept] ?? 35;
+    container.innerHTML += `
+      <div class="alert-item">
+        <label>${dept} 目標粗利率</label>
+        <div class="input-row">
+          <input type="number" id="target-${dept}" value="${val}" min="0" max="100" step="0.5" />
+          <span>% 以上</span>
+        </div>
+      </div>`;
+  });
+}
+
+function saveAlerts() {
+  DEPTS.forEach(dept => {
+    const el = document.getElementById('target-' + dept);
+    if (el) state.targets[dept] = parseFloat(el.value) || 35;
+  });
+  saveState();
+  const msg = document.getElementById('alert-save-msg');
+  msg.style.display = 'inline';
+  setTimeout(() => msg.style.display = 'none', 2500);
+  renderDashboard();
+}
+
+// ===== Simulators =====
+function renderSimResult(id, rows) {
+  document.getElementById(id).innerHTML = `<div class="sim-result">${rows.map(r => `
+    <div class="sim-result-item">
+      <div class="label">${r.label}</div>
+      <div class="value">${r.value}</div>
+      ${r.diff !== undefined ? `<div class="diff ${r.diffClass}">${r.diff}</div>` : ''}
+    </div>`).join('')}</div>`;
+}
+
+function calcPriceSim() {
+  const sales = parseFloat(document.getElementById('sim-price-sales').value);
+  const cost = parseFloat(document.getElementById('sim-price-cost').value);
+  const change = parseFloat(document.getElementById('sim-price-change').value);
+  if ([sales, cost, change].some(isNaN)) { alert('すべての項目を入力してください'); return; }
+  const before = grossMarginRate(sales, cost);
+  const newSales = sales * (1 + change / 100);
+  const after = grossMarginRate(newSales, cost);
+  const diff = after - before;
+  renderSimResult('sim-price-result', [
+    { label: '変更前 粗利率', value: fmtPct(before) },
+    { label: '変更後 粗利率', value: fmtPct(after), diff: (diff>=0?'+':'')+diff.toFixed(1)+'pt', diffClass: diff>=0?'up':'down' },
+    { label: '変更後 売上', value: fmt(newSales) },
+    { label: '変更後 粗利額', value: fmt(newSales - cost) },
+  ]);
+}
+
+function calcCostSim() {
+  const sales = parseFloat(document.getElementById('sim-cost-sales').value);
+  const cost = parseFloat(document.getElementById('sim-cost-cost').value);
+  const change = parseFloat(document.getElementById('sim-cost-change').value);
+  if ([sales, cost, change].some(isNaN)) { alert('すべての項目を入力してください'); return; }
+  const before = grossMarginRate(sales, cost);
+  const newCost = cost * (1 + change / 100);
+  const after = grossMarginRate(sales, newCost);
+  const diff = after - before;
+  renderSimResult('sim-cost-result', [
+    { label: '変更前 粗利率', value: fmtPct(before) },
+    { label: '変更後 粗利率', value: fmtPct(after), diff: (diff>=0?'+':'')+diff.toFixed(1)+'pt', diffClass: diff>=0?'up':'down' },
+    { label: '変更後 原価', value: fmt(newCost) },
+    { label: '変更後 粗利額', value: fmt(sales - newCost) },
+  ]);
+}
+
+function renderMixTable() {
+  const tbody = document.getElementById('mix-tbody');
+  if (!tbody) return;
+  const defaults = { '青果': [25, 40], '精肉': [30, 35], '鮮魚': [25, 38], '惣菜': [20, 52] };
+  tbody.innerHTML = '';
+  DEPTS.forEach(dept => {
+    const [ratio, rate] = defaults[dept];
+    tbody.innerHTML += `<tr>
+      <td style="font-weight:700;">${dept}</td>
+      <td><input type="number" class="mix-ratio" data-dept="${dept}" value="${ratio}" min="0" max="100" oninput="updateMix()" /> %</td>
+      <td><input type="number" class="mix-rate" data-dept="${dept}" value="${rate}" min="0" max="100" step="0.1" oninput="updateMix()" /> %</td>
+      <td id="mix-weighted-${dept}" style="font-weight:700;color:var(--primary);">-</td>
+    </tr>`;
+  });
+  updateMix();
+}
+
+function updateMix() {
+  let totalRatio = 0, totalWeighted = 0;
+  DEPTS.forEach(dept => {
+    const ratio = parseFloat(document.querySelector(`.mix-ratio[data-dept="${dept}"]`)?.value) || 0;
+    const rate = parseFloat(document.querySelector(`.mix-rate[data-dept="${dept}"]`)?.value) || 0;
+    const w = ratio * rate / 100;
+    totalRatio += ratio; totalWeighted += w;
+    const el = document.getElementById('mix-weighted-' + dept);
+    if (el) el.textContent = w.toFixed(2) + '%';
+  });
+  document.getElementById('mix-ratio-total').textContent = totalRatio.toFixed(0) + '%';
+  document.getElementById('mix-ratio-total').style.color = Math.abs(totalRatio - 100) < 0.5 ? 'var(--success)' : 'var(--danger)';
+  document.getElementById('mix-rate-total').textContent = totalWeighted.toFixed(1) + '%';
+}
+
+function calcMixSim() {
+  let totalRatio = 0, totalWeighted = 0;
+  DEPTS.forEach(dept => {
+    const ratio = parseFloat(document.querySelector(`.mix-ratio[data-dept="${dept}"]`)?.value) || 0;
+    const rate = parseFloat(document.querySelector(`.mix-rate[data-dept="${dept}"]`)?.value) || 0;
+    totalRatio += ratio; totalWeighted += ratio * rate / 100;
+  });
+  if (Math.abs(totalRatio - 100) > 1) { alert(`合計が${totalRatio.toFixed(0)}%です。100%に合わせてください。`); return; }
+  const rows = DEPTS.map(dept => {
+    const ratio = parseFloat(document.querySelector(`.mix-ratio[data-dept="${dept}"]`)?.value) || 0;
+    const rate = parseFloat(document.querySelector(`.mix-rate[data-dept="${dept}"]`)?.value) || 0;
+    return { label: `${dept} 寄与`, value: (ratio * rate / 100).toFixed(2) + '%' };
+  });
+  rows.push({ label: '全体粗利率', value: totalWeighted.toFixed(1) + '%' });
+  renderSimResult('sim-mix-result', rows);
+}
+
+// ===== Init =====
+loadState();
+renderFacingPage();
+renderAlertSettings();
+</script>
+</body>
+</html>

@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>スーパー シフト管理システム</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#1a5c2a;--primary-light:#2e7d42;--primary-pale:#e8f5e9;
+  --accent:#4caf50;--danger:#e53935;--warn:#f59e0b;
+  --early:#2563eb;--early-bg:#dbeafe;
+  --mid:#16a34a;--mid-bg:#dcfce7;
+  --late:#d97706;--late-bg:#fef3c7;
+  --short:#7c3aed;--short-bg:#ede9fe;
+  --pl:#0891b2;--pl-bg:#cffafe;
+  --off:#9ca3af;--off-bg:#f3f4f6;
+  --foff:#e5e7eb;
+  --radius:8px;--shadow:0 2px 8px rgba(0,0,0,.12);
+}
+body{font-family:'Segoe UI','Yu Gothic UI','Yu Gothic',sans-serif;background:#f0f4f0;color:#1f2937;min-height:100vh;font-size:14px}
+
+/* Header */
+#app-header{background:var(--primary);color:#fff;padding:0 20px;display:flex;align-items:center;gap:16px;height:54px;box-shadow:0 2px 6px rgba(0,0,0,.3);position:sticky;top:0;z-index:100;flex-wrap:wrap}
+#app-header h1{font-size:1.1rem;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:8px}
+#app-header h1 span{font-size:1.4rem}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+input[type=month]{padding:5px 10px;border-radius:6px;border:none;font-size:14px;background:#fff;color:#1f2937}
+.btn{padding:7px 14px;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;transition:opacity .15s}
+.btn:hover{opacity:.85}
+.btn-green{background:var(--accent);color:#fff}
+.btn-outline{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-blue{background:var(--early);color:#fff}
+.btn-gray{background:#6b7280;color:#fff}
+
+/* Main layout */
+#main{max-width:1600px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+
+/* Panels */
+.panel{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.panel-header{padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:8px;user-select:none;border-bottom:1px solid #e5e7eb}
+.panel-header:hover{background:#f9fafb}
+.panel-header h2{font-size:.95rem;color:var(--primary);font-weight:700;flex:1}
+.panel-header .chevron{font-size:.8rem;transition:transform .2s;color:#6b7280}
+.panel-header.open .chevron{transform:rotate(180deg)}
+.panel-body{padding:16px;display:none}
+.panel-body.open{display:block}
+
+/* Setup row */
+.setup-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.field-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.field-row label{font-size:12px;color:#4b5563;min-width:80px}
+input[type=text],input[type=number],select,.inp{
+  padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;
+  background:#fff;transition:border-color .15s;
+}
+input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(76,175,80,.2)}
+.cb-group{display:flex;gap:4px;flex-wrap:wrap}
+.cb-pill{display:inline-flex;align-items:center;gap:2px;padding:3px 8px;border:1px solid #d1d5db;border-radius:20px;cursor:pointer;font-size:12px;transition:all .15s}
+.cb-pill input{display:none}
+.cb-pill.checked{background:var(--primary);color:#fff;border-color:var(--primary)}
+.cb-pill.checked-we{background:#d97706;color:#fff;border-color:#d97706}
+
+/* Staff list */
+#staff-list{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.staff-card{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:8px;background:#fafafa;flex-wrap:wrap}
+.staff-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.staff-name{font-weight:700;min-width:80px}
+.staff-type-badge{padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
+.badge-full{background:#dbeafe;color:#1d4ed8}
+.badge-part{background:#dcfce7;color:#15803d}
+.badge-temp{background:#fef3c7;color:#92400e}
+.staff-meta{font-size:11px;color:#6b7280;flex:1}
+.staff-actions{margin-left:auto;display:flex;gap:4px}
+.btn-sm{padding:4px 10px;font-size:12px}
+
+/* Shift pattern list */
+#pattern-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.pattern-card{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;border:1px solid #e5e7eb;background:#fafafa;font-size:12px}
+.pattern-swatch{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
+
+/* Schedule section */
+#schedule-section{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.schedule-toolbar{padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #e5e7eb;flex-wrap:wrap;background:#fafafa}
+.schedule-toolbar h2{font-size:.95rem;color:var(--primary);font-weight:700}
+.view-tabs{display:flex;gap:0;margin-left:auto;border:1px solid #d1d5db;border-radius:8px;overflow:hidden}
+.view-tab{padding:6px 14px;font-size:12px;cursor:pointer;border:none;background:#fff;color:#6b7280;font-weight:600;transition:all .15s}
+.view-tab.active{background:var(--primary);color:#fff}
+
+/* Schedule table */
+#schedule-out{overflow-x:auto;padding:12px}
+.sched-table{border-collapse:collapse;font-size:11px;min-width:100%}
+.sched-table th,.sched-table td{border:1px solid #e5e7eb;padding:4px 3px;text-align:center;white-space:nowrap}
+.sched-table thead th{background:var(--primary);color:#fff;font-weight:700;font-size:10px;position:sticky;top:0;z-index:2}
+.sched-table thead th.col-name{background:#0f3d1c;min-width:90px;position:sticky;left:0;z-index:3}
+.sched-table tbody td.col-name{position:sticky;left:0;background:#f9fafb;z-index:1;font-weight:700;padding:4px 8px;font-size:11px;min-width:90px;border-right:2px solid #d1d5db}
+.sched-table th.day-we,.sched-table td.day-we{background-color:#fff7ed!important}
+.sched-table th.day-we{background:#c2410c!important;color:#fff!important}
+.sched-table td.day-sun{background-color:#fef2f2!important}
+.sched-table th.day-sun{background:#dc2626!important;color:#fff!important}
+.sched-table .sales-row td{font-size:10px;color:#6b7280;background:#f9fafb}
+.sched-table .sales-row td.day-we,.sched-table .sales-row td.day-sun{background:#fff7ed!important}
+.sched-table .cov-row td{font-size:9px;padding:2px}
+
+/* Cell chips */
+.cell-chip{display:inline-block;padding:2px 5px;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;transition:opacity .15s;min-width:30px}
+.cell-chip:hover{opacity:.75}
+.chip-early{background:var(--early-bg);color:var(--early)}
+.chip-mid{background:var(--mid-bg);color:var(--mid)}
+.chip-late{background:var(--late-bg);color:var(--late)}
+.chip-short{background:var(--short-bg);color:var(--short)}
+.chip-pl{background:var(--pl-bg);color:var(--pl)}
+.chip-off{color:#9ca3af;font-size:9px}
+.chip-foff{color:#d1d5db;font-size:9px}
+.cov-ok{color:#16a34a;font-size:9px}
+.cov-warn{color:#d97706;font-size:9px}
+.cov-ng{color:#dc2626;font-size:9px;font-weight:700}
+
+/* Summary */
+#summary-section{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+#summary-section h2{font-size:.95rem;color:var(--primary);font-weight:700;margin-bottom:12px}
+.sum-table{border-collapse:collapse;width:100%;font-size:12px}
+.sum-table th,.sum-table td{border:1px solid #e5e7eb;padding:6px 10px;text-align:center}
+.sum-table th{background:var(--primary-pale);color:var(--primary);font-weight:700}
+.sum-table tr:hover td{background:#f9fafb}
+.progress-bar{height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden;margin-top:2px}
+.progress-fill{height:100%;border-radius:3px;transition:width .3s}
+.fill-ok{background:var(--accent)}
+.fill-over{background:var(--danger)}
+.fill-under{background:var(--warn)}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.show{opacity:1;pointer-events:all}
+.modal{background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.25);padding:20px;min-width:300px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;transform:translateY(16px);transition:transform .2s}
+.modal-overlay.show .modal{transform:translateY(0)}
+.modal h3{font-size:1rem;font-weight:700;color:var(--primary);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #e5e7eb}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.chip-picker{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip-option{padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;border:2px solid transparent;transition:all .15s}
+.chip-option:hover{opacity:.8}
+.chip-option.selected{border-color:#1f2937}
+
+/* Section badges */
+.sec-badge{display:inline-block;padding:1px 6px;border-radius:10px;font-size:10px;font-weight:600;margin-left:4px}
+
+/* Notification */
+.toast{position:fixed;bottom:20px;right:20px;background:#1f2937;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:2000;transform:translateY(20px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+
+/* Print */
+@media print{
+  #app-header .hdr-right,#setup-section,.schedule-toolbar .view-tabs,.schedule-toolbar .btn,
+  #summary-section,.modal-overlay,#staff-edit-modal{display:none!important}
+  body{background:#fff}
+  #schedule-section{box-shadow:none}
+  .sched-table{font-size:9px}
+  .cell-chip{font-size:8px;padding:1px 3px}
+  @page{size:A3 landscape;margin:10mm}
+}
+
+/* Responsive */
+@media(max-width:640px){
+  #app-header{height:auto;padding:10px;gap:8px}
+  .hdr-right{margin-left:0;width:100%}
+}
+
+/* Drag hint */
+.editing-hint{font-size:11px;color:#6b7280;margin-left:auto}
+
+/* Day view */
+.day-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.day-card{border:1px solid #e5e7eb;border-radius:8px;overflow:hidden}
+.day-card-header{padding:8px 12px;font-weight:700;font-size:12px;display:flex;align-items:center;gap:6px}
+.day-card-header.we{background:var(--late-bg);color:#92400e}
+.day-card-header.sun{background:#fee2e2;color:#991b1b}
+.day-card-header.wd{background:var(--primary-pale);color:var(--primary)}
+.day-card-body{padding:8px 12px;font-size:11px}
+.day-shift-row{display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid #f3f4f6}
+.day-shift-row:last-child{border:none}
+</style>
+</head>
+<body>
+
+<header id="app-header">
+  <h1><span>🏪</span> スーパー シフト管理システム</h1>
+  <div class="hdr-right">
+    <input type="month" id="inMonth">
+    <button class="btn btn-green" id="btnGenerate">▶ シフト生成</button>
+    <button class="btn btn-outline" id="btnPrint">🖨 印刷</button>
+    <button class="btn btn-outline" id="btnCSV">📥 CSV出力</button>
+    <button class="btn btn-outline" id="btnSave">💾 保存</button>
+    <button class="btn btn-outline" id="btnLoad">📂 読込</button>
+  </div>
+</header>
+
+<div id="main">
+
+  <!-- Setup section -->
+  <div id="setup-section">
+    <!-- Staff panel -->
+    <div class="panel" id="panel-staff">
+      <div class="panel-header open" data-target="body-staff">
+        <h2>👥 スタッフ設定</h2>
+        <span class="chevron" style="transform:rotate(180deg)">▼</span>
+      </div>
+      <div class="panel-body open" id="body-staff">
+        <div class="setup-grid">
+          <div>
+            <div class="field-row">
+              <label>名前</label>
+              <input type="text" id="inName" placeholder="山田 太郎" style="flex:1;min-width:120px" autocomplete="off">
+            </div>
+            <div class="field-row">
+              <label>雇用形態</label>
+              <select id="inType">
+                <option value="full">正社員（168h/月）</option>
+                <option value="part">パート</option>
+                <option value="temp">アルバイト</option>
+              </select>
+            </div>
+            <div class="field-row" id="row-target">
+              <label>目標時間</label>
+              <input type="number" id="inTarget" value="80" min="10" max="300" style="width:80px"> h/月
+            </div>
+            <div class="field-row">
+              <label>担当部門</label>
+              <select id="inSection">
+                <option value="管理職">管理職</option>
+                <option value="レジ">レジ</option>
+                <option value="青果">青果</option>
+                <option value="精肉">精肉</option>
+                <option value="鮮魚">鮮魚</option>
+                <option value="惣菜">惣菜</option>
+                <option value="品出し">品出し</option>
+                <option value="バックヤード">バックヤード</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <label>シフト優先</label>
+              <select id="inPref">
+                <option value="any">指定なし</option>
+                <option value="early">早番優先</option>
+                <option value="mid">中番優先</option>
+                <option value="late">遅番優先</option>
+                <option value="short">短番のみ</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <label>固定休日</label>
+              <div class="cb-group" id="offDayGroup">
+                <label class="cb-pill checked-we" data-v="0"><input type="checkbox" value="0">日</label>
+                <label class="cb-pill" data-v="1"><input type="checkbox" value="1">月</label>
+                <label class="cb-pill" data-v="2"><input type="checkbox" value="2">火</label>
+                <label class="cb-pill" data-v="3"><input type="checkbox" value="3">水</label>
+                <label class="cb-pill" data-v="4"><input type="checkbox" value="4">木</label>
+                <label class="cb-pill" data-v="5"><input type="checkbox" value="5">金</label>
+                <label class="cb-pill checked-we" data-v="6"><input type="checkbox" value="6">土</label>
+              </div>
+            </div>
+            <div class="field-row">
+              <label>スタッフ色</label>
+              <input type="color" id="inColor" value="#3b82f6" style="width:40px;height:32px;border:1px solid #d1d5db;border-radius:6px;cursor:pointer">
+              <button class="btn btn-green" id="btnAddStaff">＋ 追加</button>
+              <button class="btn btn-gray" id="btnCancelEdit" style="display:none">✕ キャンセル</button>
+            </div>
+          </div>
+          <div>
+            <div id="staff-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shift pattern panel -->
+    <div class="panel" style="margin-top:10px" id="panel-shifts">
+      <div class="panel-header" data-target="body-shifts">
+        <h2>🕐 シフトパターン設定</h2>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="panel-body" id="body-shifts">
+        <div id="pattern-list"></div>
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e5e7eb">
+          <div class="setup-grid">
+            <div>
+              <div class="field-row"><label>パターン名</label><input type="text" id="pName" placeholder="例：早番A" style="flex:1"></div>
+              <div class="field-row">
+                <label>開始時刻</label>
+                <input type="number" id="pStartH" min="0" max="23" value="7" style="width:56px"> 時
+                <input type="number" id="pStartM" min="0" max="59" step="15" value="0" style="width:56px"> 分
+              </div>
+              <div class="field-row">
+                <label>終了時刻</label>
+                <input type="number" id="pEndH" min="0" max="29" value="15" style="width:56px"> 時
+                <input type="number" id="pEndM" min="0" max="59" step="15" value="0" style="width:56px"> 分
+              </div>
+              <div class="field-row">
+                <label>種別</label>
+                <select id="pType">
+                  <option value="early">早番</option>
+                  <option value="mid">中番</option>
+                  <option value="late">遅番</option>
+                  <option value="short">短番</option>
+                </select>
+              </div>
+              <div class="field-row"><label>色</label><input type="color" id="pColor" value="#2563eb" style="width:40px;height:32px;border:1px solid #d1d5db;border-radius:6px;cursor:pointer"></div>
+              <button class="btn btn-green" id="btnAddPattern">＋ パターン追加</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Requirements panel -->
+    <div class="panel" style="margin-top:10px" id="panel-req">
+      <div class="panel-header" data-target="body-req">
+        <h2>📊 売上・要員設定</h2>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="panel-body" id="body-req">
+        <div class="setup-grid">
+          <div>
+            <p style="font-size:12px;color:#6b7280;margin-bottom:10px">曜日ごとの売上目標（千円）と最低出勤人数を設定します</p>
+            <table style="border-collapse:collapse;font-size:13px;width:100%">
+              <thead>
+                <tr>
+                  <th style="padding:6px 10px;background:var(--primary-pale);color:var(--primary);border:1px solid #e5e7eb">曜日</th>
+                  <th style="padding:6px 10px;background:var(--primary-pale);color:var(--primary);border:1px solid #e5e7eb">売上目標（千円）</th>
+                  <th style="padding:6px 10px;background:var(--primary-pale);color:var(--primary);border:1px solid #e5e7eb">最低出勤人数</th>
+                </tr>
+              </thead>
+              <tbody id="reqTable"></tbody>
+            </table>
+          </div>
+          <div>
+            <div class="field-row"><label>有給日数/月</label><input type="number" id="inPaidLeave" value="2" min="0" max="10" style="width:60px"> 日（正社員のみ）</div>
+            <div class="field-row"><label>最大連勤</label><input type="number" id="inMaxConsec" value="6" min="1" max="30" style="width:60px"> 日</div>
+            <div class="field-row"><label>有給時間</label><input type="number" id="inPaidLeaveH" value="8" min="4" max="10" style="width:60px"> h</div>
+            <div style="margin-top:12px;padding:12px;background:#fef3c7;border-radius:8px;font-size:12px;color:#78350f">
+              <strong>⚡ 自動調整ルール</strong><br>
+              ・早番→中番→遅番の順に割当<br>
+              ・時間超過スタッフは短番優先<br>
+              ・連勤超過時は強制休日挿入<br>
+              ・月末まで目標時間へ自動収束
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Schedule -->
+  <div id="schedule-section">
+    <div class="schedule-toolbar">
+      <h2>📅 シフト表</h2>
+      <span class="editing-hint">セルをクリックして手動編集できます</span>
+      <div class="view-tabs">
+        <button class="view-tab active" id="tabStaff">スタッフ別</button>
+        <button class="view-tab" id="tabDay">日付別</button>
+      </div>
+    </div>
+    <div id="schedule-out">
+      <p style="padding:40px;text-align:center;color:#9ca3af;font-size:13px">⬆ シフト設定後「シフト生成」ボタンを押してください</p>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div id="summary-section" style="display:none">
+    <h2>📈 月間サマリー</h2>
+    <div id="summary-out"></div>
+  </div>
+
+</div>
+
+<!-- Edit modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h3 id="editModalTitle">シフト編集</h3>
+    <div id="editModalBody"></div>
+    <div class="modal-btns">
+      <button class="btn btn-gray" id="editModalCancel">キャンセル</button>
+      <button class="btn btn-green" id="editModalOk">適用</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ======================== CONSTANTS ======================== */
+const DN = ["日","月","火","水","木","金","土"];
+const SECTION_COLORS = {
+  "管理職":"#fce7f3","レジ":"#dbeafe","青果":"#dcfce7","精肉":"#fee2e2","鮮魚":"#e0f2fe",
+  "惣菜":"#fef9c3","品出し":"#f3e8ff","バックヤード":"#f1f5f9"
+};
+const SECTION_TC = {
+  "管理職":"#9d174d","レジ":"#1d4ed8","青果":"#15803d","精肉":"#b91c1c","鮮魚":"#0369a1",
+  "惣菜":"#854d0e","品出し":"#6d28d9","バックヤード":"#374151"
+};
+const TYPE_COLORS = {early:"#2563eb",mid:"#16a34a",late:"#d97706",short:"#7c3aed"};
+const TYPE_LABELS = {early:"早",mid:"中",late:"遅",short:"短"};
+const TYPE_CHIP_CLASS = {early:"chip-early",mid:"chip-mid",late:"chip-late",short:"chip-short"};
+
+/* ======================== STATE ======================== */
+let App = {
+  staff: [],
+  patterns: [],
+  settings: {
+    salesByDow: [8000,5000,5000,5000,5000,7000,9000],
+    minStaffByDow: [3,2,2,2,2,3,4],
+    paidLeaveDays: 2,
+    maxConsec: 6,
+    paidLeaveHours: 8
+  },
+  schedule: {},
+  month: null
+};
+
+let currentView = "staff";
+let editTarget = null;
+let editChoice = null;
+
+/* ======================== DEFAULTS ======================== */
+function defaultPatterns() {
+  // 早番は必ず7:00開始、遅番は必ず20:00終了（21時終了は使用しない）
+  return [
+    {id:"p_early1", name:"早番",  startH:7,  startM:0,  endH:15, endM:0,  type:"early", color:"#2563eb"},
+    {id:"p_early2", name:"早番B", startH:7,  startM:0,  endH:16, endM:0,  type:"early", color:"#3b82f6"},
+    {id:"p_early3", name:"早番C", startH:7,  startM:30, endH:15, endM:30, type:"early", color:"#60a5fa"},
+    {id:"p_mid1",   name:"中番",  startH:10, startM:0,  endH:18, endM:0,  type:"mid",   color:"#16a34a"},
+    {id:"p_mid2",   name:"中番B", startH:11, startM:0,  endH:19, endM:0,  type:"mid",   color:"#22c55e"},
+    {id:"p_late1",  name:"遅番",  startH:12, startM:0,  endH:20, endM:0,  type:"late",  color:"#d97706"},
+    {id:"p_late2",  name:"遅番B", startH:13, startM:0,  endH:20, endM:0,  type:"late",  color:"#f59e0b"},
+    {id:"p_short1", name:"短番A", startH:9,  startM:0,  endH:13, endM:0,  type:"short", color:"#7c3aed"},
+    {id:"p_short2", name:"短番B", startH:14, startM:0,  endH:18, endM:0,  type:"short", color:"#8b5cf6"},
+    {id:"p_short3", name:"短番C", startH:16, startM:0,  endH:20, endM:0,  type:"short", color:"#a78bfa"},
+  ];
+}
+
+function patternDuration(p) {
+  return ((p.endH * 60 + p.endM) - (p.startH * 60 + p.startM)) / 60;
+}
+
+function patternLabel(p) {
+  const pad = n => String(n).padStart(2,"0");
+  return `${pad(p.startH)}:${pad(p.startM)}〜${pad(p.endH)}:${pad(p.endM)}`;
+}
+
+function getPatternsByType(type) {
+  return App.patterns.filter(p => p.type === type);
+}
+
+function randPick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function uid() { return "s_" + Math.random().toString(36).slice(2, 9); }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+/* ======================== UI HELPERS ======================== */
+function toast(msg, dur=2500) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), dur);
+}
+
+function fmtH(h) { return (Number.isInteger(h) ? h : h.toFixed(1)) + "h"; }
+
+/* ======================== STAFF ======================== */
+let editingStaffId = null;
+
+function renderStaffList() {
+  const el = document.getElementById("staff-list");
+  if (!App.staff.length) { el.innerHTML = '<p style="font-size:12px;color:#9ca3af;padding:8px">スタッフを追加してください</p>'; return; }
+  const typeMap = {full:"正社員",part:"パート",temp:"バイト"};
+  el.innerHTML = App.staff.map((s, i) => {
+    const badgeCls = {full:"badge-full",part:"badge-part",temp:"badge-temp"}[s.type];
+    const offStr = s.offDays.map(d => DN[d]).join(",");
+    const tgt = s.type === "full" ? 168 : s.targetHours;
+    const isEditing = editingStaffId === s.id;
+    return `<div class="staff-card" style="${isEditing ? "border:2px solid var(--accent);background:#f0fdf4" : ""}">
+      <div class="staff-dot" style="background:${s.color}"></div>
+      <span class="staff-name">${s.name}</span>
+      <span class="staff-type-badge ${badgeCls}">${typeMap[s.type]}</span>
+      <span class="staff-meta">目標${tgt}h | 休:${offStr||"なし"} | ${s.section} | ${s.pref==="any"?"自由":s.pref}</span>
+      <div class="staff-actions">
+        <button class="btn btn-sm" style="background:#e0f2fe;color:#0369a1;font-weight:700" data-edit="${s.id}">✏️ 編集</button>
+        <button class="btn btn-danger btn-sm" data-del="${i}">削除</button>
+      </div>
+    </div>`;
+  }).join("");
+  el.querySelectorAll("[data-del]").forEach(b => {
+    b.addEventListener("click", () => {
+      if (editingStaffId === App.staff[+b.dataset.del]?.id) cancelEditStaff();
+      App.staff.splice(+b.dataset.del, 1);
+      renderStaffList();
+    });
+  });
+  el.querySelectorAll("[data-edit]").forEach(b => {
+    b.addEventListener("click", () => startEditStaff(b.dataset.edit));
+  });
+}
+
+function startEditStaff(id) {
+  const s = App.staff.find(x => x.id === id);
+  if (!s) return;
+  editingStaffId = id;
+  // Populate form
+  document.getElementById("inName").value = s.name;
+  document.getElementById("inType").value = s.type;
+  document.getElementById("inTarget").value = s.targetHours;
+  document.getElementById("row-target").style.display = s.type === "full" ? "none" : "flex";
+  document.getElementById("inSection").value = s.section;
+  document.getElementById("inPref").value = s.pref;
+  document.getElementById("inColor").value = s.color;
+  // Set off days
+  document.getElementById("offDayGroup").querySelectorAll(".cb-pill").forEach(pill => {
+    const cb = pill.querySelector("input");
+    const v = +pill.dataset.v;
+    cb.checked = s.offDays.includes(v);
+    pill.classList.remove("checked", "checked-we");
+    if (cb.checked) pill.classList.add(v === 0 || v === 6 ? "checked-we" : "checked");
+  });
+  // Change button
+  document.getElementById("btnAddStaff").textContent = "✔ 更新";
+  document.getElementById("btnAddStaff").style.background = "#0369a1";
+  // Show cancel button
+  document.getElementById("btnCancelEdit").style.display = "inline-block";
+  renderStaffList();
+  // Scroll form into view
+  document.getElementById("inName").focus();
+}
+
+function cancelEditStaff() {
+  editingStaffId = null;
+  document.getElementById("inName").value = "";
+  document.getElementById("btnAddStaff").textContent = "＋ 追加";
+  document.getElementById("btnAddStaff").style.background = "";
+  document.getElementById("btnCancelEdit").style.display = "none";
+  // Reset pills
+  document.getElementById("offDayGroup").querySelectorAll(".cb-pill").forEach(pill => {
+    const cb = pill.querySelector("input");
+    cb.checked = false;
+    pill.classList.remove("checked", "checked-we");
+  });
+  renderStaffList();
+}
+
+document.getElementById("inType").addEventListener("change", function() {
+  document.getElementById("row-target").style.display = this.value === "full" ? "none" : "flex";
+});
+document.getElementById("row-target").style.display = "none";
+
+// Pill checkboxes
+document.getElementById("offDayGroup").querySelectorAll(".cb-pill").forEach(pill => {
+  const cb = pill.querySelector("input");
+  pill.addEventListener("click", () => {
+    cb.checked = !cb.checked;
+    const dow = +pill.dataset.v;
+    if (cb.checked) {
+      pill.classList.add(dow === 0 || dow === 6 ? "checked-we" : "checked");
+    } else {
+      pill.classList.remove("checked", "checked-we");
+    }
+  });
+});
+
+document.getElementById("btnAddStaff").addEventListener("click", () => {
+  const name = document.getElementById("inName").value.trim();
+  if (!name) { toast("名前を入力してください"); return; }
+  const type = document.getElementById("inType").value;
+  const targetHours = type === "full" ? 168 : +(document.getElementById("inTarget").value) || 80;
+  const section = document.getElementById("inSection").value;
+  const pref = document.getElementById("inPref").value;
+  const color = document.getElementById("inColor").value;
+  const offDays = [];
+  document.getElementById("offDayGroup").querySelectorAll("input:checked").forEach(c => offDays.push(+c.value));
+
+  if (editingStaffId) {
+    // Update existing
+    const idx = App.staff.findIndex(x => x.id === editingStaffId);
+    if (idx !== -1) {
+      App.staff[idx] = { ...App.staff[idx], name, type, targetHours, section, pref, color, offDays };
+      toast(`${name} を更新しました ✓`);
+    }
+    cancelEditStaff();
+  } else {
+    // Add new
+    App.staff.push({ id: uid(), name, type, targetHours, section, pref, color, offDays });
+    document.getElementById("inName").value = "";
+    renderStaffList();
+    toast(`${name} を追加しました`);
+  }
+});
+
+document.getElementById("btnCancelEdit").addEventListener("click", cancelEditStaff);
+
+/* ======================== SHIFT PATTERNS ======================== */
+function renderPatterns() {
+  const el = document.getElementById("pattern-list");
+  if (!App.patterns.length) { el.innerHTML = '<p style="font-size:12px;color:#9ca3af">パターンなし</p>'; return; }
+  el.innerHTML = App.patterns.map((p, i) => {
+    const dur = patternDuration(p);
+    const lbl = patternLabel(p);
+    return `<div class="pattern-card">
+      <div class="pattern-swatch" style="background:${p.color}">${TYPE_LABELS[p.type]}</div>
+      <div style="font-size:12px">
+        <div style="font-weight:700">${p.name}</div>
+        <div style="color:#6b7280">${lbl} (${fmtH(dur)})</div>
+      </div>
+      <button class="btn btn-danger btn-sm" data-pdel="${i}" style="margin-left:auto">削除</button>
+    </div>`;
+  }).join("");
+  el.querySelectorAll("[data-pdel]").forEach(b => {
+    b.addEventListener("click", () => { App.patterns.splice(+b.dataset.pdel, 1); renderPatterns(); });
+  });
+}
+
+document.getElementById("btnAddPattern").addEventListener("click", () => {
+  const name = document.getElementById("pName").value.trim();
+  if (!name) { toast("パターン名を入力してください"); return; }
+  const startH = +document.getElementById("pStartH").value;
+  const startM = +document.getElementById("pStartM").value;
+  const endH = +document.getElementById("pEndH").value;
+  const endM = +document.getElementById("pEndM").value;
+  const type = document.getElementById("pType").value;
+  const color = document.getElementById("pColor").value;
+  const dur = ((endH * 60 + endM) - (startH * 60 + startM)) / 60;
+  if (dur <= 0) { toast("終了時刻は開始時刻より後にしてください"); return; }
+  App.patterns.push({ id: uid(), name, startH, startM, endH, endM, type, color });
+  document.getElementById("pName").value = "";
+  renderPatterns();
+  toast(`${name} を追加しました`);
+});
+
+/* ======================== REQUIREMENTS TABLE ======================== */
+function renderReqTable() {
+  const tbody = document.getElementById("reqTable");
+  const DOW_NAMES = ["日（祝）","月曜","火曜","水曜","木曜","金曜","土（祝前）"];
+  tbody.innerHTML = DOW_NAMES.map((d, i) => {
+    const isWe = i === 0 || i === 6;
+    return `<tr>
+      <td style="padding:6px 10px;border:1px solid #e5e7eb;font-weight:${isWe?"700":"400"};color:${i===0?"#dc2626":i===6?"#c2410c":"#1f2937"}">${d}</td>
+      <td style="border:1px solid #e5e7eb;padding:4px 6px"><input type="number" class="inp" id="rSales${i}" value="${App.settings.salesByDow[i]}" min="0" step="1000" style="width:100%;border:none;font-size:13px"></td>
+      <td style="border:1px solid #e5e7eb;padding:4px 6px"><input type="number" class="inp" id="rMin${i}" value="${App.settings.minStaffByDow[i]}" min="1" max="20" style="width:60px;border:none;font-size:13px"></td>
+    </tr>`;
+  }).join("");
+}
+
+function readSettings() {
+  App.settings.paidLeaveDays = +document.getElementById("inPaidLeave").value || 2;
+  App.settings.maxConsec = +document.getElementById("inMaxConsec").value || 6;
+  App.settings.paidLeaveHours = +document.getElementById("inPaidLeaveH").value || 8;
+  for (let i = 0; i < 7; i++) {
+    App.settings.salesByDow[i] = +document.getElementById(`rSales${i}`).value || 0;
+    App.settings.minStaffByDow[i] = +document.getElementById(`rMin${i}`).value || 2;
+  }
+}
+
+/* ======================== PANEL TOGGLE ======================== */
+document.querySelectorAll(".panel-header").forEach(h => {
+  h.addEventListener("click", () => {
+    const body = document.getElementById(h.dataset.target);
+    const open = body.classList.toggle("open");
+    h.classList.toggle("open", open);
+    const chev = h.querySelector(".chevron");
+    chev.style.transform = open ? "rotate(180deg)" : "rotate(0deg)";
+  });
+});
+
+/* ======================== ALGORITHM ======================== */
+function generateSchedule() {
+  readSettings();
+  if (!App.staff.length) { toast("スタッフを登録してください"); return; }
+  if (!App.patterns.length) { toast("シフトパターンを設定してください"); return; }
+  const mEl = document.getElementById("inMonth");
+  if (!mEl.value) { toast("対象月を選択してください"); return; }
+  const [yr, mo] = mEl.value.split("-").map(Number);
+  App.month = { year: yr, month: mo };
+  const lastDay = new Date(yr, mo, 0).getDate();
+  const { paidLeaveDays, paidLeaveHours, maxConsec, minStaffByDow } = App.settings;
+
+  // Initialize
+  const sched = {};
+  const hrs = {};
+  const wdCount = {};
+  const consec = {};
+  const lastWasWork = {};
+  for (const s of App.staff) {
+    sched[s.id] = {};
+    hrs[s.id] = 0;
+    wdCount[s.id] = 0;
+    consec[s.id] = 0;
+    lastWasWork[s.id] = false;
+  }
+
+  // Mark fixed days off
+  for (const s of App.staff) {
+    for (let d = 1; d <= lastDay; d++) {
+      const dow = new Date(yr, mo - 1, d).getDay();
+      if (s.offDays.includes(dow)) {
+        sched[s.id][d] = { type: "foff" };
+      }
+    }
+  }
+
+  // Assign paid leave for full-time staff
+  // Rule: don't place paid leave on a day where coverage would drop below minimum
+  for (const s of App.staff) {
+    if (s.type !== "full") continue;
+    const cands = [];
+    for (let d = 1; d <= lastDay; d++) {
+      if (!sched[s.id][d]) cands.push(d);
+    }
+    // Spread across weeks - avoid days where too many others already have planned leave
+    const plCountByDay = {};
+    const weeks = [[], [], [], [], []];
+    cands.forEach(d => weeks[Math.min(4, Math.floor((d - 1) / 7))].push(d));
+    const picked = [];
+    for (const wk of weeks) {
+      if (picked.length >= paidLeaveDays) break;
+      if (!wk.length) continue;
+      shuffle(wk);
+      // Prefer days where existing PL count is low
+      wk.sort((a, b) => (plCountByDay[a] || 0) - (plCountByDay[b] || 0));
+      picked.push(wk[0]);
+      plCountByDay[wk[0]] = (plCountByDay[wk[0]] || 0) + 1;
+    }
+    while (picked.length < Math.min(paidLeaveDays, cands.length)) {
+      const rem = cands.filter(d => !picked.includes(d));
+      if (!rem.length) break;
+      rem.sort((a, b) => (plCountByDay[a] || 0) - (plCountByDay[b] || 0));
+      picked.push(rem[0]);
+      plCountByDay[rem[0]] = (plCountByDay[rem[0]] || 0) + 1;
+    }
+    for (const d of picked) sched[s.id][d] = { type: "pl" };
+  }
+
+  // Main scheduling loop
+  for (let day = 1; day <= lastDay; day++) {
+    const dow = new Date(yr, mo - 1, day).getDay();
+    const minStaff = minStaffByDow[dow];
+
+    // Available staff
+    const avail = App.staff.filter(s => {
+      if (sched[s.id][day]) return false;
+      if (consec[s.id] >= maxConsec) return false;
+      return true;
+    });
+
+    // Score: higher score = assign this person first
+    const daysLeft = lastDay - day + 1;
+    avail.sort((a, b) => {
+      const tgtA = a.type === "full" ? 168 : a.targetHours;
+      const tgtB = b.type === "full" ? 168 : b.targetHours;
+      const remA = Math.max(0, tgtA - paidLeaveDays * paidLeaveHours - hrs[a.id]);
+      const remB = Math.max(0, tgtB - paidLeaveDays * paidLeaveHours - hrs[b.id]);
+      const scoreA = remA / daysLeft;
+      const scoreB = remB / daysLeft;
+      return scoreB - scoreA + (Math.random() - 0.5) * 0.3;
+    });
+
+    let count = Math.min(minStaff, avail.length);
+    if (count < 1 && App.staff.length > 0) {
+      // Fallback 1: relax consecutive limit (find staff not fixed off)
+      const fallback = App.staff.filter(s => sched[s.id][day]?.type !== "foff");
+      if (fallback.length) {
+        // Prefer paid-leave staff over true-off staff (override PL if needed)
+        const plCands = fallback.filter(s => sched[s.id][day]?.type === "pl");
+        const offCands = fallback.filter(s => sched[s.id][day]?.type === "off" || !sched[s.id][day]);
+        const chosen = (offCands.length ? offCands : plCands).sort((a, b) => hrs[a.id] - hrs[b.id]);
+        if (chosen.length) {
+          sched[chosen[0].id][day] = assignShift(chosen[0], 0, 1);
+          hrs[chosen[0].id] += sched[chosen[0].id][day].hours || 0;
+          wdCount[chosen[0].id]++;
+        }
+      } else {
+        // Fallback 2: absolute last resort - override fixed off for staff with fewest hours
+        const last = [...App.staff].sort((a, b) => hrs[a.id] - hrs[b.id]);
+        if (last.length) {
+          sched[last[0].id][day] = assignShift(last[0], 0, 1);
+          hrs[last[0].id] += sched[last[0].id][day].hours || 0;
+          wdCount[last[0].id]++;
+        }
+      }
+    }
+
+    // Assign shifts to selected staff
+    for (let pi = 0; pi < count; pi++) {
+      const s = avail[pi];
+      const tgt = s.type === "full" ? 168 : s.targetHours;
+      const remaining = Math.max(0, tgt - paidLeaveDays * paidLeaveHours - hrs[s.id]);
+      const worksLeft = Math.max(1, estimateWorkDays(s, day, lastDay, yr, mo, sched));
+      const avgNeed = remaining / worksLeft;
+      const entry = assignShift(s, pi, count, avgNeed);
+      sched[s.id][day] = entry;
+      hrs[s.id] += entry.hours || 0;
+      wdCount[s.id]++;
+    }
+
+    // Update consecutive counters and mark rest
+    for (const s of App.staff) {
+      const worked = sched[s.id][day]?.type === "work";
+      if (worked) {
+        consec[s.id]++;
+      } else {
+        consec[s.id] = 0;
+      }
+      if (!sched[s.id][day]) sched[s.id][day] = { type: "off" };
+    }
+  }
+
+  // Post-process 1: Coverage guarantee pass
+  // Ensures every day has at least minStaff workers, even if it means overriding paid leave / fixed off
+  for (let day = 1; day <= lastDay; day++) {
+    const dow = new Date(yr, mo - 1, day).getDay();
+    const minS = minStaffByDow[dow];
+    const workerCount = App.staff.filter(s => sched[s.id][day]?.type === "work").length;
+    if (workerCount >= minS) continue;
+
+    const needed = minS - workerCount;
+    // Candidates: not already working, ordered by: off > pl > foff (prefer disturbing less critical entries)
+    const candidates = App.staff
+      .filter(s => sched[s.id][day]?.type !== "work")
+      .map(s => ({ s, priority: sched[s.id][day]?.type === "foff" ? 3 : sched[s.id][day]?.type === "pl" ? 2 : 1 }))
+      .sort((a, b) => a.priority - b.priority || hrs[a.s.id] - hrs[b.s.id]);
+
+    for (let k = 0; k < Math.min(needed, candidates.length); k++) {
+      const { s } = candidates[k];
+      const wasType = sched[s.id][day]?.type;
+      // If overriding paid leave, try to move it to another available day
+      if (wasType === "pl") {
+        const altDays = [];
+        for (let d2 = 1; d2 <= lastDay; d2++) {
+          if (d2 !== day && (sched[s.id][d2]?.type === "off" || !sched[s.id][d2])) altDays.push(d2);
+        }
+        if (altDays.length) {
+          shuffle(altDays);
+          sched[s.id][altDays[0]] = { type: "pl" };
+        }
+      }
+      const entry = assignShift(s, k, needed);
+      sched[s.id][day] = entry;
+      hrs[s.id] += entry.hours || 0;
+      wdCount[s.id]++;
+    }
+  }
+
+  // Post-process 2: extend hours to reach target on high-sales days
+  const byDate = [];
+  for (let d = 1; d <= lastDay; d++) {
+    const dow = new Date(yr, mo - 1, d).getDay();
+    byDate.push({ d, sales: App.settings.salesByDow[dow] });
+  }
+  byDate.sort((a, b) => b.sales - a.sales);
+
+  for (const { d } of byDate) {
+    for (const s of App.staff) {
+      const e = sched[s.id][d];
+      if (!e || e.type !== "work") continue;
+      const tgt = s.type === "full" ? 168 : s.targetHours;
+      const remaining = tgt - hrs[s.id];
+      if (remaining < 1) continue;
+      const p = App.patterns.find(x => x.id === e.patternId);
+      if (!p) continue;
+      // If same pattern type has a longer variant, switch
+      const longer = App.patterns.filter(x => x.type === p.type && patternDuration(x) > patternDuration(p));
+      if (longer.length) {
+        const best = longer.reduce((a, b) => patternDuration(a) < patternDuration(b) ? a : b);
+        const diff = patternDuration(best) - patternDuration(p);
+        if (diff <= remaining) {
+          hrs[s.id] += diff;
+          e.patternId = best.id;
+          e.hours = patternDuration(best);
+        }
+      }
+    }
+  }
+
+  App.schedule = sched;
+  App.hrs = hrs;
+  App.wdCount = wdCount;
+  renderScheduleView();
+  renderSummary();
+  document.getElementById("summary-section").style.display = "block";
+  toast(`${yr}年${mo}月のシフトを生成しました ✓`);
+}
+
+function assignShift(s, posIdx, total, avgNeed) {
+  const pref = s.pref;
+  let typeOrder;
+
+  if (pref === "early") typeOrder = ["early","mid","late","short"];
+  else if (pref === "mid") typeOrder = ["mid","early","late","short"];
+  else if (pref === "late") typeOrder = ["late","mid","early","short"];
+  else if (pref === "short") typeOrder = ["short"];
+  else {
+    // positional: first=early, last=late, middle=mid
+    if (total === 1) typeOrder = ["mid","early","late","short"];
+    else if (posIdx === 0) typeOrder = ["early","mid","late","short"];
+    else if (posIdx === total - 1) typeOrder = ["late","mid","early","short"];
+    else typeOrder = ["mid","early","late","short"];
+  }
+
+  let pattern = null;
+  for (const t of typeOrder) {
+    const opts = getPatternsByType(t);
+    if (opts.length) { pattern = randPick(opts); break; }
+  }
+  if (!pattern) pattern = App.patterns[0];
+
+  return { type: "work", patternId: pattern.id, hours: patternDuration(pattern), section: s.section };
+}
+
+function estimateWorkDays(s, fromDay, lastDay, yr, mo, sched) {
+  let count = 0;
+  for (let d = fromDay; d <= lastDay; d++) {
+    const dow = new Date(yr, mo - 1, d).getDay();
+    if (!s.offDays.includes(dow) && sched[s.id][d]?.type !== "pl") count++;
+  }
+  return count;
+}
+
+/* ======================== RENDER SCHEDULE ======================== */
+function renderScheduleView() {
+  if (!App.month) return;
+  if (currentView === "staff") renderStaffView();
+  else renderDayView();
+}
+
+function renderStaffView() {
+  const { year, month } = App.month;
+  const lastDay = new Date(year, month, 0).getDate();
+  const sched = App.schedule;
+
+  let th = `<thead><tr>
+    <th class="col-name">スタッフ</th>`;
+  for (let d = 1; d <= lastDay; d++) {
+    const dow = new Date(year, month - 1, d).getDay();
+    const cls = dow === 0 ? "day-sun" : dow === 6 ? "day-we" : "";
+    th += `<th class="${cls}">${d}<br>${DN[dow]}</th>`;
+  }
+  th += `<th>出勤</th><th>実勤</th><th>合計</th></tr></thead>`;
+
+  // Sales row
+  let body = `<tbody><tr class="sales-row"><td class="col-name" style="font-size:10px;font-weight:600">売上目標<br>(千円)</td>`;
+  for (let d = 1; d <= lastDay; d++) {
+    const dow = new Date(year, month - 1, d).getDay();
+    const cls = dow === 0 ? "day-sun" : dow === 6 ? "day-we" : "";
+    body += `<td class="${cls}" style="font-size:10px">${App.settings.salesByDow[dow].toLocaleString()}</td>`;
+  }
+  body += `<td colspan="3"></td></tr>`;
+
+  // Coverage row
+  body += `<tr class="cov-row"><td class="col-name" style="font-size:10px;color:#6b7280">出勤人数</td>`;
+  for (let d = 1; d <= lastDay; d++) {
+    const dow = new Date(year, month - 1, d).getDay();
+    const cls = dow === 0 ? "day-sun" : dow === 6 ? "day-we" : "";
+    const count = App.staff.filter(s => sched[s.id]?.[d]?.type === "work").length;
+    const min = App.settings.minStaffByDow[dow];
+    const covCls = count >= min ? "cov-ok" : count >= min - 1 ? "cov-warn" : "cov-ng";
+    body += `<td class="${cls}"><span class="${covCls}">${count}/${min}</span></td>`;
+  }
+  body += `<td colspan="3"></td></tr>`;
+
+  // Staff rows
+  for (const s of App.staff) {
+    const tgt = s.type === "full" ? 168 : s.targetHours;
+    const plH = s.type === "full" ? App.settings.paidLeaveDays * App.settings.paidLeaveHours : 0;
+    const actualH = App.hrs?.[s.id] || 0;
+    const totalH = actualH + plH;
+    body += `<tr><td class="col-name" title="${s.section}">
+      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${s.color};margin-right:4px"></span>${s.name}
+    </td>`;
+    for (let d = 1; d <= lastDay; d++) {
+      const dow = new Date(year, month - 1, d).getDay();
+      const cls = dow === 0 ? "day-sun" : dow === 6 ? "day-we" : "";
+      const e = sched[s.id]?.[d];
+      body += `<td class="${cls}" data-sid="${s.id}" data-day="${d}">${cellHTML(e)}</td>`;
+    }
+    body += `<td style="font-weight:700">${App.wdCount?.[s.id] || 0}日</td>
+      <td>${fmtH(actualH)}</td>
+      <td style="font-weight:700;color:${Math.abs(totalH - tgt) <= 8 ? "var(--mid)" : totalH > tgt ? "var(--danger)" : "var(--warn)"}">${fmtH(totalH)}</td></tr>`;
+  }
+  body += `</tbody>`;
+
+  const out = document.getElementById("schedule-out");
+  out.innerHTML = `<div style="font-weight:700;font-size:13px;padding:4px 0 10px;color:var(--primary)">${year}年${month}月度 勤務シフト計画表</div>
+    <div style="overflow-x:auto"><table class="sched-table">${th}${body}</table></div>
+    <div style="margin-top:10px;font-size:11px;color:#9ca3af;display:flex;gap:16px;flex-wrap:wrap">
+      <span class="cell-chip chip-early">早</span>早番
+      <span class="cell-chip chip-mid">中</span>中番
+      <span class="cell-chip chip-late">遅</span>遅番
+      <span class="cell-chip chip-short">短</span>短番
+      <span class="cell-chip chip-pl">有</span>有給
+      <span style="color:#9ca3af">○</span>休日
+      <span style="color:#d1d5db">ー</span>固定休
+    </div>`;
+
+  // Cell click events
+  out.querySelectorAll("td[data-sid]").forEach(td => {
+    td.style.cursor = "pointer";
+    td.addEventListener("click", () => openEditModal(td.dataset.sid, +td.dataset.day));
+  });
+}
+
+function renderDayView() {
+  const { year, month } = App.month;
+  const lastDay = new Date(year, month, 0).getDate();
+  let html = `<div style="padding:4px 0 12px;font-weight:700;font-size:13px;color:var(--primary)">${year}年${month}月度 日付別シフト</div><div class="day-cards">`;
+  for (let d = 1; d <= lastDay; d++) {
+    const dow = new Date(year, month - 1, d).getDay();
+    const isWe = dow === 6;
+    const isSun = dow === 0;
+    const hdrCls = isSun ? "sun" : isWe ? "we" : "wd";
+    const workers = App.staff.filter(s => App.schedule[s.id]?.[d]?.type === "work");
+    const plStaff = App.staff.filter(s => App.schedule[s.id]?.[d]?.type === "pl");
+    const covCount = workers.length;
+    const minCov = App.settings.minStaffByDow[dow];
+    const covOk = covCount >= minCov;
+    html += `<div class="day-card">
+      <div class="day-card-header ${hdrCls}">
+        <span>${month}/${d}（${DN[dow]}）</span>
+        <span style="margin-left:auto;font-size:11px">${covOk?"✅":"⚠️"} ${covCount}/${minCov}人</span>
+      </div>
+      <div class="day-card-body">`;
+    if (workers.length) {
+      const byType = { early:[], mid:[], late:[], short:[] };
+      workers.forEach(s => {
+        const e = App.schedule[s.id][d];
+        const p = App.patterns.find(x => x.id === e.patternId);
+        if (p) byType[p.type].push({ s, p });
+      });
+      for (const [t, list] of Object.entries(byType)) {
+        if (!list.length) continue;
+        list.forEach(({ s, p }) => {
+          html += `<div class="day-shift-row">
+            <span class="cell-chip ${TYPE_CHIP_CLASS[t]}">${TYPE_LABELS[t]}</span>
+            <span style="font-weight:700">${s.name}</span>
+            <span style="color:#6b7280;font-size:10px">${patternLabel(p)}</span>
+            <span class="sec-badge" style="background:${SECTION_COLORS[s.section]||"#f3f4f6"};color:${SECTION_TC[s.section]||"#374151"}">${s.section}</span>
+          </div>`;
+        });
+      }
+    } else {
+      html += `<div style="color:#9ca3af;font-size:11px;padding:4px 0">出勤者なし</div>`;
+    }
+    if (plStaff.length) {
+      html += `<div style="margin-top:4px;font-size:11px;color:var(--pl)">有給: ${plStaff.map(s=>s.name).join(", ")}</div>`;
+    }
+    html += `</div></div>`;
+  }
+  html += `</div>`;
+  document.getElementById("schedule-out").innerHTML = html;
+}
+
+function cellHTML(e) {
+  if (!e) return `<span class="chip-off">○</span>`;
+  if (e.type === "foff") return `<span class="chip-foff">ー</span>`;
+  if (e.type === "off") return `<span class="chip-off">○</span>`;
+  if (e.type === "pl") return `<span class="cell-chip chip-pl">有給</span>`;
+  if (e.type === "work") {
+    const p = App.patterns.find(x => x.id === e.patternId);
+    if (!p) return `<span class="chip-off">?</span>`;
+    const cls = TYPE_CHIP_CLASS[p.type];
+    const lbl = TYPE_LABELS[p.type];
+    const dur = patternDuration(p);
+    return `<span class="cell-chip ${cls}" title="${patternLabel(p)}">${lbl}${dur}</span>`;
+  }
+  return "";
+}
+
+/* ======================== SUMMARY ======================== */
+function renderSummary() {
+  const typeMap = { full:"正社員", part:"パート", temp:"バイト" };
+  const { paidLeaveDays, paidLeaveHours } = App.settings;
+  let rows = "";
+  for (const s of App.staff) {
+    const tgt = s.type === "full" ? 168 : s.targetHours;
+    const plH = s.type === "full" ? paidLeaveDays * paidLeaveHours : 0;
+    const actualH = App.hrs?.[s.id] || 0;
+    const totalH = actualH + plH;
+    const pct = Math.min(100, Math.round(totalH / tgt * 100));
+    const diff = totalH - tgt;
+    const diffStr = diff > 0 ? `+${diff}h` : `${diff}h`;
+    const fillCls = Math.abs(diff) <= 8 ? "fill-ok" : diff > 0 ? "fill-over" : "fill-under";
+    rows += `<tr>
+      <td style="text-align:left">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${s.color};margin-right:6px"></span>${s.name}
+      </td>
+      <td><span style="font-size:11px;padding:2px 8px;border-radius:12px;background:${s.type==="full"?"#dbeafe":s.type==="part"?"#dcfce7":"#fef3c7"};color:${s.type==="full"?"#1d4ed8":s.type==="part"?"#15803d":"#92400e"}">${typeMap[s.type]}</span></td>
+      <td>${s.section}</td>
+      <td>${App.wdCount?.[s.id] || 0}日</td>
+      <td>${fmtH(actualH)}</td>
+      <td>${fmtH(plH)}</td>
+      <td style="font-weight:700">${fmtH(totalH)}</td>
+      <td>${fmtH(tgt)}</td>
+      <td style="color:${Math.abs(diff)<=8?"var(--mid)":diff>0?"var(--danger)":"var(--warn)"};font-weight:700">${diffStr}</td>
+      <td style="min-width:100px">
+        <div class="progress-bar"><div class="progress-fill ${fillCls}" style="width:${pct}%"></div></div>
+        <div style="font-size:10px;color:#6b7280;text-align:right">${pct}%</div>
+      </td>
+    </tr>`;
+  }
+  document.getElementById("summary-out").innerHTML = `
+    <table class="sum-table">
+      <thead><tr>
+        <th style="text-align:left">スタッフ</th><th>種別</th><th>部門</th>
+        <th>出勤日数</th><th>実勤</th><th>有給</th><th>合計</th><th>目標</th><th>差異</th><th>達成率</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+/* ======================== EDIT MODAL ======================== */
+function openEditModal(staffId, day) {
+  if (!App.month) return;
+  const s = App.staff.find(x => x.id === staffId);
+  if (!s) return;
+  const { year, month } = App.month;
+  const dow = new Date(year, month - 1, day).getDay();
+  const e = App.schedule[s.id]?.[day];
+  editTarget = { staffId, day };
+  editChoice = e ? { ...e } : { type: "off" };
+
+  document.getElementById("editModalTitle").textContent = `${s.name} - ${month}/${day}（${DN[dow]}）`;
+  const body = document.getElementById("editModalBody");
+
+  const options = [
+    { key: "off", label: "休日", chipCls: "chip-off", color: "#9ca3af" },
+    { key: "foff", label: "固定休", chipCls: "chip-foff", color: "#d1d5db" },
+    { key: "pl", label: "有給", chipCls: "chip-pl", color: "#0891b2" },
+    ...App.patterns.map(p => ({
+      key: p.id, label: `${p.name} ${patternLabel(p)}`, chipCls: TYPE_CHIP_CLASS[p.type], color: p.color, patternId: p.id
+    }))
+  ];
+
+  const currentKey = e?.type === "work" ? e.patternId : (e?.type || "off");
+  body.innerHTML = `<p style="font-size:12px;color:#6b7280;margin-bottom:10px">シフトを選択してください</p>
+    <div class="chip-picker">${options.map(o => `
+      <div class="chip-option ${o.chipCls} ${currentKey === o.key ? "selected" : ""}" data-key="${o.key}" style="background:${o.key==="off"?"#f3f4f6":o.key==="foff"?"#e5e7eb":o.key==="pl"?"#cffafe":""}">
+        ${o.label}
+      </div>`).join("")}</div>`;
+
+  body.querySelectorAll(".chip-option").forEach(chip => {
+    chip.addEventListener("click", () => {
+      body.querySelectorAll(".chip-option").forEach(c => c.classList.remove("selected"));
+      chip.classList.add("selected");
+      const k = chip.dataset.key;
+      if (k === "off") editChoice = { type: "off" };
+      else if (k === "foff") editChoice = { type: "foff" };
+      else if (k === "pl") editChoice = { type: "pl" };
+      else {
+        const p = App.patterns.find(x => x.id === k);
+        editChoice = { type: "work", patternId: k, hours: patternDuration(p), section: s.section };
+      }
+    });
+  });
+
+  document.getElementById("editModal").classList.add("show");
+}
+
+document.getElementById("editModalOk").addEventListener("click", () => {
+  if (!editTarget || !editChoice) return;
+  const { staffId, day } = editTarget;
+  if (!App.schedule[staffId]) App.schedule[staffId] = {};
+  const oldEntry = App.schedule[staffId][day];
+  // Update hours
+  if (oldEntry?.type === "work") App.hrs[staffId] -= oldEntry.hours || 0;
+  if (editChoice.type === "work") App.hrs[staffId] += editChoice.hours || 0;
+  if (oldEntry?.type !== "work" && editChoice.type === "work") App.wdCount[staffId] = (App.wdCount[staffId] || 0) + 1;
+  if (oldEntry?.type === "work" && editChoice.type !== "work") App.wdCount[staffId] = Math.max(0, (App.wdCount[staffId] || 1) - 1);
+  App.schedule[staffId][day] = editChoice;
+  document.getElementById("editModal").classList.remove("show");
+  renderScheduleView();
+  renderSummary();
+  toast("シフトを更新しました");
+});
+
+document.getElementById("editModalCancel").addEventListener("click", () => {
+  document.getElementById("editModal").classList.remove("show");
+});
+document.getElementById("editModal").addEventListener("click", function(e) {
+  if (e.target === this) this.classList.remove("show");
+});
+
+/* ======================== VIEW TABS ======================== */
+document.getElementById("tabStaff").addEventListener("click", function() {
+  currentView = "staff";
+  this.classList.add("active");
+  document.getElementById("tabDay").classList.remove("active");
+  renderScheduleView();
+});
+document.getElementById("tabDay").addEventListener("click", function() {
+  currentView = "day";
+  this.classList.add("active");
+  document.getElementById("tabStaff").classList.remove("active");
+  renderScheduleView();
+});
+
+/* ======================== CSV EXPORT ======================== */
+document.getElementById("btnCSV").addEventListener("click", () => {
+  if (!App.month || !App.staff.length) { toast("先にシフトを生成してください"); return; }
+  const { year, month } = App.month;
+  const lastDay = new Date(year, month, 0).getDate();
+  const rows = [];
+
+  // Header
+  const hdr = ["スタッフ", "部門", "種別"];
+  for (let d = 1; d <= lastDay; d++) {
+    const dow = new Date(year, month - 1, d).getDay();
+    hdr.push(`${d}(${DN[dow]})`);
+  }
+  hdr.push("出勤日数", "実勤時間", "有給時間", "合計");
+  rows.push(hdr);
+
+  // Sales row
+  const salesRow = ["売上目標(千円)", "", ""];
+  for (let d = 1; d <= lastDay; d++) {
+    const dow = new Date(year, month - 1, d).getDay();
+    salesRow.push(App.settings.salesByDow[dow]);
+  }
+  salesRow.push("", "", "", "");
+  rows.push(salesRow);
+
+  // Staff rows
+  const typeMap = { full:"正社員", part:"パート", temp:"バイト" };
+  const { paidLeaveDays, paidLeaveHours } = App.settings;
+  for (const s of App.staff) {
+    const plH = s.type === "full" ? paidLeaveDays * paidLeaveHours : 0;
+    const actualH = App.hrs?.[s.id] || 0;
+    const row = [s.name, s.section, typeMap[s.type]];
+    for (let d = 1; d <= lastDay; d++) {
+      const e = App.schedule[s.id]?.[d];
+      if (!e || e.type === "off") row.push("○");
+      else if (e.type === "foff") row.push("ー");
+      else if (e.type === "pl") row.push("有給");
+      else if (e.type === "work") {
+        const p = App.patterns.find(x => x.id === e.patternId);
+        row.push(p ? `${TYPE_LABELS[p.type]}${patternDuration(p)}` : "?");
+      } else row.push("");
+    }
+    row.push(`${App.wdCount?.[s.id] || 0}日`, `${actualH}h`, `${plH}h`, `${actualH + plH}h`);
+    rows.push(row);
+  }
+
+  const bom = "\uFEFF";
+  const csv = bom + rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `シフト_${year}年${month}月.csv`;
+  a.click();
+  toast("CSVを出力しました");
+});
+
+/* ======================== PRINT ======================== */
+document.getElementById("btnPrint").addEventListener("click", () => {
+  if (!App.month) { toast("先にシフトを生成してください"); return; }
+  currentView = "staff";
+  document.getElementById("tabStaff").classList.add("active");
+  document.getElementById("tabDay").classList.remove("active");
+  renderScheduleView();
+  setTimeout(() => window.print(), 200);
+});
+
+/* ======================== SAVE / LOAD ======================== */
+document.getElementById("btnSave").addEventListener("click", () => {
+  readSettings();
+  const data = {
+    staff: App.staff,
+    patterns: App.patterns,
+    settings: App.settings,
+    schedule: App.schedule,
+    hrs: App.hrs,
+    wdCount: App.wdCount,
+    month: App.month
+  };
+  try {
+    localStorage.setItem("supershift_v2", JSON.stringify(data));
+    toast("保存しました ✓");
+  } catch(e) { toast("保存に失敗しました"); }
+});
+
+document.getElementById("btnLoad").addEventListener("click", () => {
+  try {
+    const raw = localStorage.getItem("supershift_v2");
+    if (!raw) { toast("保存データが見つかりません"); return; }
+    const data = JSON.parse(raw);
+    App.staff = data.staff || [];
+    App.patterns = data.patterns || [];
+    App.settings = { ...App.settings, ...(data.settings || {}) };
+    App.schedule = data.schedule || {};
+    App.hrs = data.hrs || {};
+    App.wdCount = data.wdCount || {};
+    App.month = data.month || null;
+    // Restore settings UI
+    document.getElementById("inPaidLeave").value = App.settings.paidLeaveDays;
+    document.getElementById("inMaxConsec").value = App.settings.maxConsec;
+    document.getElementById("inPaidLeaveH").value = App.settings.paidLeaveHours;
+    renderReqTable();
+    renderStaffList();
+    renderPatterns();
+    if (App.month) {
+      document.getElementById("inMonth").value = `${App.month.year}-${String(App.month.month).padStart(2,"0")}`;
+      renderScheduleView();
+      renderSummary();
+      document.getElementById("summary-section").style.display = "block";
+    }
+    toast("読み込みました ✓");
+  } catch(e) { toast("読み込みに失敗しました"); }
+});
+
+/* ======================== GENERATE BUTTON ======================== */
+document.getElementById("btnGenerate").addEventListener("click", generateSchedule);
+
+/* ======================== INIT ======================== */
+function init() {
+  App.patterns = defaultPatterns();
+  renderPatterns();
+  renderStaffList();
+  renderReqTable();
+
+  const now = new Date();
+  const mo = now.getMonth() + 2 > 12 ? 1 : now.getMonth() + 2;
+  const yr = mo === 1 ? now.getFullYear() + 1 : now.getFullYear();
+  document.getElementById("inMonth").value = `${yr}-${String(mo).padStart(2,"0")}`;
+
+  // Sample data for demo
+  // 日曜出勤を確保するため、日曜を固定休にするスタッフは最小限に
+  const sampleStaff = [
+    { id:uid(), name:"山田 太郎", type:"full",  targetHours:168, section:"管理職", pref:"early", color:"#2563eb", offDays:[3,4] },
+    { id:uid(), name:"田中 花子", type:"full",  targetHours:168, section:"青果",   pref:"mid",   color:"#16a34a", offDays:[1,2] },
+    { id:uid(), name:"鈴木 次郎", type:"full",  targetHours:168, section:"精肉",   pref:"late",  color:"#d97706", offDays:[2,5] },
+    { id:uid(), name:"佐藤 美咲", type:"part",  targetHours:100, section:"レジ",   pref:"any",   color:"#7c3aed", offDays:[1,4] },
+    { id:uid(), name:"渡辺 健一", type:"part",  targetHours:80,  section:"品出し", pref:"early", color:"#0891b2", offDays:[3,6] },
+    { id:uid(), name:"伊藤 さくら",type:"temp", targetHours:60,  section:"レジ",   pref:"short", color:"#e11d48", offDays:[4,5] },
+  ];
+  App.staff = sampleStaff;
+  renderStaffList();
+}
+
+init();
+</script>
+</body>
+</html>

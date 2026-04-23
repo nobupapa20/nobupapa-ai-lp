@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>競合価格・チラシ自動収集ツール | デモ</title>
+<style>
+  :root {
+    --navy:   #1A2B4A;
+    --blue:   #3A7BD5;
+    --orange: #F5A623;
+    --red:    #ef4444;
+    --green:  #22c55e;
+    --yellow: #f59e0b;
+    --bg:     #F0F4F8;
+    --white:  #fff;
+    --border: #D8E3F0;
+    --muted:  #6B7A99;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Hiragino Maru Gothic ProN','Yu Gothic',sans-serif; background: var(--bg); color: var(--navy); min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* ─── HEADER ─── */
+  .header { background: var(--navy); color: #fff; padding: 0.8rem 1.4rem; display: flex; align-items: center; gap: 0.9rem; flex-shrink: 0; }
+  .header-icon { font-size: 1.4rem; }
+  .header-info h1 { font-size: 0.95rem; font-weight: 700; }
+  .header-info p  { font-size: 0.7rem; color: rgba(255,255,255,.55); margin-top: 2px; }
+  .header-right { margin-left: auto; text-align: right; }
+  .last-scan { font-size: 0.68rem; color: rgba(255,255,255,.5); }
+  .last-scan span { color: rgba(255,255,255,.85); font-weight: 600; }
+  .demo-notice { background: #FFF7E0; border-bottom: 2px solid var(--orange); text-align: center; font-size: 0.72rem; color: #7a5000; padding: 0.35rem; }
+
+  /* ─── LAYOUT ─── */
+  .main { display: flex; gap: 1rem; padding: 1rem; flex: 1; min-height: 0; }
+
+  /* ─── LEFT PANEL ─── */
+  .left-panel { width: 220px; flex-shrink: 0; display: flex; flex-direction: column; gap: 0.85rem; }
+
+  .panel-card { background: var(--white); border-radius: 12px; padding: 1rem; box-shadow: 0 2px 8px rgba(26,43,74,.07); }
+  .panel-title { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 0.7rem; }
+
+  .competitor-list { display: flex; flex-direction: column; gap: 0.45rem; }
+  .comp-item { display: flex; align-items: center; gap: 0.55rem; font-size: 0.8rem; padding: 0.45rem 0.6rem; border-radius: 8px; border: 1.5px solid var(--border); transition: all .3s; }
+  .comp-item.scanning { border-color: var(--orange); background: #FFF7E0; }
+  .comp-item.done     { border-color: var(--green); background: #F0FFF4; }
+  .comp-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); flex-shrink: 0; transition: background .3s; }
+  .comp-item.scanning .comp-dot { background: var(--orange); animation: blink .7s infinite; }
+  .comp-item.done .comp-dot     { background: var(--green); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .comp-name { font-weight: 600; flex: 1; }
+  .comp-status { font-size: 0.65rem; color: var(--muted); }
+  .comp-item.scanning .comp-status { color: var(--orange); }
+  .comp-item.done .comp-status     { color: var(--green); }
+
+  .scan-btn { width: 100%; padding: 0.75rem; background: var(--blue); color: #fff; border: none; border-radius: 10px; font-size: 0.88rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
+  .scan-btn:hover:not(:disabled) { background: #2a5fb5; transform: translateY(-1px); }
+  .scan-btn:disabled { background: #7a9fcf; cursor: not-allowed; transform: none; }
+  .scan-btn.running { background: var(--orange); }
+  .spin { display: inline-block; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .log-box { background: #0d1b2a; border-radius: 10px; padding: 0.7rem; font-size: 0.68rem; font-family: monospace; color: #7dd3fc; max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.2rem; }
+  .log-box .log-line { opacity: 0; animation: logIn .2s ease forwards; }
+  @keyframes logIn { to { opacity: 1; } }
+  .log-ok   { color: #86efac; }
+  .log-warn { color: var(--orange); }
+  .log-err  { color: #fca5a5; }
+
+  /* ─── RIGHT AREA ─── */
+  .right-area { flex: 1; display: flex; flex-direction: column; gap: 0.85rem; min-width: 0; }
+
+  /* ─── SUMMARY CARDS ─── */
+  .summary-row { display: flex; gap: 0.75rem; }
+  .summary-card { flex: 1; background: var(--white); border-radius: 12px; padding: 0.9rem 1rem; box-shadow: 0 2px 8px rgba(26,43,74,.07); display: flex; align-items: center; gap: 0.7rem; }
+  .sc-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+  .sc-icon.red    { background: #fee2e2; }
+  .sc-icon.yellow { background: #fef3c7; }
+  .sc-icon.green  { background: #dcfce7; }
+  .sc-icon.blue   { background: #dbeafe; }
+  .sc-val { font-size: 1.5rem; font-weight: 800; color: var(--navy); line-height: 1; }
+  .sc-val.red    { color: var(--red); }
+  .sc-val.yellow { color: var(--yellow); }
+  .sc-val.green  { color: #16a34a; }
+  .sc-label { font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
+  .sc-waiting { font-size: 0.78rem; color: var(--muted); }
+
+  /* ─── TABLE ─── */
+  .table-card { background: var(--white); border-radius: 12px; padding: 1rem; box-shadow: 0 2px 8px rgba(26,43,74,.07); flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .table-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.8rem; }
+  .table-title { font-size: 0.82rem; font-weight: 700; }
+  .table-meta { font-size: 0.68rem; color: var(--muted); }
+  .legend { display: flex; gap: 0.8rem; font-size: 0.65rem; color: var(--muted); }
+  .leg-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 3px; }
+
+  .price-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  .price-table th { background: var(--bg); color: var(--muted); font-weight: 700; font-size: 0.65rem; text-transform: uppercase; padding: 0.5rem 0.7rem; text-align: center; border-bottom: 2px solid var(--border); white-space: nowrap; }
+  .price-table th:first-child { text-align: left; }
+  .price-table td { padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--border); text-align: center; vertical-align: middle; }
+  .price-table td:first-child { text-align: left; font-weight: 600; font-size: 0.8rem; }
+  .price-table tr:last-child td { border-bottom: none; }
+  .price-table tr:hover td { background: #f8faff; }
+
+  .price-cell { display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; font-weight: 600; border-radius: 6px; padding: 0.2rem 0.4rem; min-width: 52px; }
+  .price-cell.self { background: var(--bg); color: var(--navy); font-weight: 700; }
+  .price-cell.lower { color: var(--red); }
+  .price-cell.lower::after { content: '▼'; font-size: 0.55rem; }
+  .price-cell.higher { color: #16a34a; }
+  .price-cell.higher::after { content: '▲'; font-size: 0.55rem; }
+  .price-cell.same { color: var(--muted); }
+  .price-cell.empty { color: #ccc; font-weight: 400; }
+
+  .alert-badge { display: inline-block; font-size: 0.6rem; font-weight: 700; padding: 0.15rem 0.45rem; border-radius: 999px; margin-left: 0.3rem; }
+  .alert-badge.danger { background: #fee2e2; color: #991b1b; }
+  .alert-badge.warn   { background: #fef3c7; color: #92400e; }
+  .alert-badge.ok     { background: #dcfce7; color: #15803d; }
+
+  .skeleton { background: linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 4px; display: inline-block; }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+
+  .waiting-msg { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.85rem; }
+  .waiting-msg .big { font-size: 2rem; margin-bottom: 0.5rem; }
+
+  @media (max-width: 700px) {
+    .main { flex-direction: column; }
+    .left-panel { width: 100%; }
+    .summary-row { flex-wrap: wrap; }
+    .summary-card { min-width: calc(50% - 0.4rem); }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">🔍</div>
+  <div class="header-info">
+    <h1>競合価格・チラシ自動収集ツール</h1>
+    <p>〇〇スーパー（デモ）— 価格比較ダッシュボード</p>
+  </div>
+  <div class="header-right">
+    <div class="last-scan">前回スキャン: <span id="lastScanTime">—</span></div>
+  </div>
+</div>
+<div class="demo-notice">※ デモ用サンプルです。実際のデータ取得はAIがWebから自動収集します（本番環境）。</div>
+
+<div class="main">
+
+  <!-- ─── 左パネル ─── -->
+  <div class="left-panel">
+
+    <div class="panel-card">
+      <div class="panel-title">競合店リスト</div>
+      <div class="competitor-list">
+        <div class="comp-item" id="comp-0">
+          <div class="comp-dot"></div>
+          <div class="comp-name">さくらマート</div>
+          <div class="comp-status" id="cs-0">待機中</div>
+        </div>
+        <div class="comp-item" id="comp-1">
+          <div class="comp-dot"></div>
+          <div class="comp-name">ひまわりSM</div>
+          <div class="comp-status" id="cs-1">待機中</div>
+        </div>
+        <div class="comp-item" id="comp-2">
+          <div class="comp-dot"></div>
+          <div class="comp-name">みどり食品館</div>
+          <div class="comp-status" id="cs-2">待機中</div>
+        </div>
+        <div class="comp-item" id="comp-3">
+          <div class="comp-dot"></div>
+          <div class="comp-name">フレッシュONE</div>
+          <div class="comp-status" id="cs-3">待機中</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="scan-btn" id="scanBtn" onclick="startScan()">
+      <span id="scanIcon">🔍</span> スキャン実行
+    </button>
+
+    <div class="panel-card" style="padding:0.7rem">
+      <div class="panel-title" style="margin-bottom:0.5rem">収集ログ</div>
+      <div class="log-box" id="logBox">
+        <div style="color:#475569;font-size:0.65rem">スキャンを実行すると<br>ログが表示されます</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─── 右エリア ─── -->
+  <div class="right-area">
+
+    <div class="summary-row">
+      <div class="summary-card">
+        <div class="sc-icon red">🔴</div>
+        <div>
+          <div class="sc-val red" id="sc-danger">—</div>
+          <div class="sc-label">競合より高い商品</div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="sc-icon yellow">⚠️</div>
+        <div>
+          <div class="sc-val yellow" id="sc-warn">—</div>
+          <div class="sc-label">5%以上の価格差</div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="sc-icon green">✅</div>
+        <div>
+          <div class="sc-val green" id="sc-ok">—</div>
+          <div class="sc-label">競合より安い・同額</div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="sc-icon blue">📋</div>
+        <div>
+          <div class="sc-val" id="sc-total">—</div>
+          <div class="sc-label">収集商品数</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-header">
+        <div>
+          <div class="table-title">価格比較テーブル</div>
+          <div class="table-meta" id="tableMeta">スキャン実行後にデータが表示されます</div>
+        </div>
+        <div class="legend">
+          <span><span class="leg-dot" style="background:#ef4444"></span>競合が安い▼</span>
+          <span><span class="leg-dot" style="background:#22c55e"></span>自店が安い▲</span>
+          <span><span class="leg-dot" style="background:#94a3b8"></span>同価格</span>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto;flex:1">
+        <div id="tableArea">
+          <div class="waiting-msg">
+            <div class="big">🔍</div>
+            「スキャン実行」を押すと<br>競合店の価格データを自動収集します
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  商品・価格データ（デモ用）
+// ══════════════════════════════════════════
+const ITEMS = [
+  { name: '牛乳（1L）',          cat: '乳製品',   self: 198, prices: [188, 208, 193, 205] },
+  { name: '食パン（6枚切り）',    cat: 'パン',     self: 148, prices: [148, 138, 158, 148] },
+  { name: '卵（10個入り）',       cat: '卵',       self: 248, prices: [258, 238, 248, 269] },
+  { name: 'キャベツ（1玉）',      cat: '野菜',     self: 188, prices: [178, 198, 168, 188] },
+  { name: '豚バラ肉（100g）',     cat: '肉類',     self: 158, prices: [148, 168, 158, 142] },
+  { name: '鶏もも肉（100g）',     cat: '肉類',     self: 88,  prices: [92,  85,  88,  95]  },
+  { name: 'もやし（1袋）',        cat: '野菜',     self: 28,  prices: [29,  28,  25,  28]  },
+  { name: 'サラダ油（900g）',     cat: '調味料',   self: 358, prices: [328, 368, 338, 358] },
+  { name: 'ヨーグルト（400g）',   cat: '乳製品',   self: 128, prices: [118, 138, 128, 118] },
+  { name: 'トマト（3個入り）',    cat: '野菜',     self: 198, prices: [188, 208, 178, 198] },
+  { name: '豆腐（1丁）',          cat: '豆腐',     self: 68,  prices: [68,  65,  72,  68]  },
+  { name: '納豆（3パック）',      cat: '豆腐',     self: 128, prices: [118, 138, 128, 128] },
+];
+
+const COMPS = ['さくらマート', 'ひまわりSM', 'みどり食品館', 'フレッシュONE'];
+let isScanning = false;
+
+// ══════════════════════════════════════════
+//  ログ
+// ══════════════════════════════════════════
+function addLog(text, cls='') {
+  const logBox = document.getElementById('logBox');
+  if (logBox.querySelector('div:not(.log-line)')) logBox.innerHTML = '';
+  const line = document.createElement('div');
+  line.className = 'log-line' + (cls ? ' '+cls : '');
+  line.textContent = text;
+  logBox.appendChild(line);
+  logBox.scrollTop = logBox.scrollHeight;
+}
+
+// ══════════════════════════════════════════
+//  スキャン実行
+// ══════════════════════════════════════════
+async function startScan() {
+  if (isScanning) return;
+  isScanning = true;
+
+  const btn = document.getElementById('scanBtn');
+  btn.disabled = true;
+  btn.classList.add('running');
+  btn.innerHTML = '<span class="spin">⟳</span> スキャン中...';
+
+  // ログリセット
+  document.getElementById('logBox').innerHTML = '';
+  // サマリーリセット
+  ['sc-danger','sc-warn','sc-ok','sc-total'].forEach(id => {
+    document.getElementById(id).textContent = '—';
+  });
+  // テーブルリセット
+  document.getElementById('tableArea').innerHTML = buildSkeletonTable();
+
+  addLog(`[${now()}] スキャン開始`);
+  addLog(`[${now()}] 対象商品: ${ITEMS.length}件`);
+
+  await sleep(400);
+
+  // 各競合店を順番にスキャン
+  for (let i = 0; i < COMPS.length; i++) {
+    setCompState(i, 'scanning');
+    addLog(`[${now()}] ${COMPS[i]} チラシ・価格ページ取得中...`);
+    await sleep(600 + Math.random() * 500);
+    addLog(`[${now()}] ${COMPS[i]} 価格データ解析中 (AI)`, 'log-warn');
+    await sleep(700 + Math.random() * 400);
+    addLog(`[${now()}] ${COMPS[i]} ${ITEMS.length}品目 収集完了 ✓`, 'log-ok');
+    setCompState(i, 'done');
+    await sleep(200);
+  }
+
+  await sleep(300);
+  addLog(`[${now()}] 全店舗スキャン完了 — 分析中...`);
+  await sleep(600);
+
+  // テーブル生成
+  renderTable();
+  renderSummary();
+
+  addLog(`[${now()}] 要対応: ${countDanger()}件の価格差を検出`, 'log-warn');
+  addLog(`[${now()}] レポート完了 ✅`, 'log-ok');
+
+  document.getElementById('lastScanTime').textContent = new Date().toLocaleString('ja-JP');
+  document.getElementById('tableMeta').textContent =
+    `最終更新: ${new Date().toLocaleString('ja-JP')} — ${ITEMS.length}商品 × ${COMPS.length}店舗`;
+
+  btn.disabled = false;
+  btn.classList.remove('running');
+  btn.innerHTML = '🔄 再スキャン';
+  isScanning = false;
+}
+
+function setCompState(idx, state) {
+  const el = document.getElementById(`comp-${idx}`);
+  const st = document.getElementById(`cs-${idx}`);
+  el.className = 'comp-item ' + state;
+  st.textContent = state === 'scanning' ? '収集中...' : '完了';
+}
+
+// ══════════════════════════════════════════
+//  スケルトン表
+// ══════════════════════════════════════════
+function buildSkeletonTable() {
+  const headers = ['商品名', '自店価格', ...COMPS, '状況'];
+  let html = `<table class="price-table"><thead><tr>`;
+  headers.forEach(h => { html += `<th>${h}</th>`; });
+  html += `</tr></thead><tbody>`;
+  for (let i = 0; i < ITEMS.length; i++) {
+    html += `<tr>`;
+    for (let j = 0; j < headers.length; j++) {
+      const w = j === 0 ? 120 : 56;
+      html += `<td><span class="skeleton" style="width:${w}px;height:14px">&nbsp;</span></td>`;
+    }
+    html += `</tr>`;
+  }
+  html += `</tbody></table>`;
+  return html;
+}
+
+// ══════════════════════════════════════════
+//  テーブル描画
+// ══════════════════════════════════════════
+function renderTable() {
+  const headers = ['商品名', '自店価格', ...COMPS, '状況'];
+  let html = `<table class="price-table"><thead><tr>`;
+  headers.forEach(h => { html += `<th>${h}</th>`; });
+  html += `</tr></thead><tbody>`;
+
+  ITEMS.forEach(item => {
+    const minComp = Math.min(...item.prices);
+    const maxComp = Math.max(...item.prices);
+    const dangerCount = item.prices.filter(p => p < item.self).length;
+
+    let statusBadge = '';
+    if (dangerCount === 0) {
+      statusBadge = `<span class="alert-badge ok">✅ 優位</span>`;
+    } else if (dangerCount >= 3 || (minComp / item.self) < 0.93) {
+      statusBadge = `<span class="alert-badge danger">🔴 要対応</span>`;
+    } else {
+      statusBadge = `<span class="alert-badge warn">⚠ 確認</span>`;
+    }
+
+    html += `<tr>`;
+    html += `<td>${item.name}</td>`;
+    html += `<td><span class="price-cell self">¥${item.self}</span></td>`;
+
+    item.prices.forEach(p => {
+      let cls, label;
+      const diff = ((p - item.self) / item.self * 100).toFixed(1);
+      if (p < item.self) {
+        cls = 'lower';
+        label = `<span class="price-cell lower">¥${p}</span><br><small style="font-size:.62rem;color:#ef4444">${diff}%</small>`;
+      } else if (p > item.self) {
+        cls = 'higher';
+        label = `<span class="price-cell higher">¥${p}</span><br><small style="font-size:.62rem;color:#16a34a">+${diff}%</small>`;
+      } else {
+        label = `<span class="price-cell same">¥${p}</span>`;
+      }
+      html += `<td style="white-space:nowrap">${label}</td>`;
+    });
+
+    html += `<td style="white-space:nowrap">${statusBadge}</td>`;
+    html += `</tr>`;
+  });
+
+  html += `</tbody></table>`;
+  document.getElementById('tableArea').innerHTML = html;
+}
+
+// ══════════════════════════════════════════
+//  サマリー描画
+// ══════════════════════════════════════════
+function renderSummary() {
+  let danger = 0, warn = 0, ok = 0;
+  ITEMS.forEach(item => {
+    const dangerCount = item.prices.filter(p => p < item.self).length;
+    const minComp = Math.min(...item.prices);
+    if (dangerCount === 0) {
+      ok++;
+    } else if (dangerCount >= 3 || (minComp / item.self) < 0.93) {
+      danger++;
+    } else {
+      warn++;
+    }
+  });
+  document.getElementById('sc-danger').textContent = danger + '件';
+  document.getElementById('sc-warn').textContent = warn + '件';
+  document.getElementById('sc-ok').textContent = ok + '件';
+  document.getElementById('sc-total').textContent = ITEMS.length + '品';
+}
+
+function countDanger() {
+  return ITEMS.filter(item => {
+    const dangerCount = item.prices.filter(p => p < item.self).length;
+    const minComp = Math.min(...item.prices);
+    return dangerCount >= 3 || (minComp / item.self) < 0.93;
+  }).length;
+}
+
+// ══════════════════════════════════════════
+//  ユーティリティ
+// ══════════════════════════════════════════
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function now() {
+  return new Date().toLocaleTimeString('ja-JP', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+</script>
+</body>
+</html>

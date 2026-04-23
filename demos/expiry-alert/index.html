@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>賞味期限アラート自動通知ツール｜デモ</title>
+<style>
+:root{--navy:#1A2B4A;--blue:#3A7BD5;--orange:#F5A623;--red:#ef4444;--green:#22c55e;--yellow:#eab308;--bg:#F0F4F8;--white:#fff;--border:#D8E3F0;--muted:#6B7A99;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Hiragino Maru Gothic ProN','Yu Gothic',sans-serif;background:var(--bg);color:var(--navy);min-height:100vh;display:flex;flex-direction:column;}
+.header{background:var(--navy);color:#fff;padding:.8rem 1.4rem;display:flex;align-items:center;gap:.9rem;}
+.header h1{font-size:.95rem;font-weight:700;}
+.header p{font-size:.7rem;color:rgba(255,255,255,.55);}
+.demo-badge{margin-left:auto;background:var(--orange);color:#fff;font-size:.68rem;font-weight:700;padding:.3rem .9rem;border-radius:999px;}
+.main{display:flex;gap:1rem;padding:1rem;flex:1;align-items:flex-start;}
+.col-left{width:320px;flex-shrink:0;display:flex;flex-direction:column;gap:.85rem;}
+.col-mid{flex:1;display:flex;flex-direction:column;gap:.85rem;}
+.col-right{width:260px;flex-shrink:0;display:flex;flex-direction:column;gap:.85rem;}
+.card{background:var(--white);border-radius:12px;padding:1rem;box-shadow:0 2px 8px rgba(26,43,74,.07);}
+.card-title{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.8rem;}
+
+/* 追加フォーム */
+.form-row{display:flex;gap:.5rem;margin-bottom:.5rem;align-items:center;}
+.form-row label{font-size:.72rem;color:var(--muted);white-space:nowrap;width:70px;}
+.form-row input,.form-row select{flex:1;border:1.5px solid var(--border);border-radius:8px;padding:.38rem .6rem;font-size:.78rem;font-family:inherit;color:var(--navy);}
+.form-row input:focus,.form-row select:focus{outline:none;border-color:var(--blue);}
+.add-btn{width:100%;padding:.6rem;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:.3rem;}
+.add-btn:hover{background:#2a5fb5;}
+
+/* 商品リスト */
+.item-list{display:flex;flex-direction:column;gap:.5rem;max-height:380px;overflow-y:auto;}
+.item-row{display:flex;align-items:center;gap:.6rem;padding:.55rem .7rem;border-radius:10px;border:1.5px solid var(--border);background:#fafcff;position:relative;transition:all .2s;}
+.item-row.urgent{border-color:#ef4444;background:#fff5f5;}
+.item-row.warning{border-color:var(--orange);background:#fffbf0;}
+.item-row.caution{border-color:var(--yellow);background:#fefce8;}
+.item-row.safe{border-color:#d1fae5;background:#f0fdf4;}
+.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.dot-urgent{background:#ef4444;}
+.dot-warning{background:var(--orange);}
+.dot-caution{background:var(--yellow);}
+.dot-safe{background:var(--green);}
+.item-name{font-size:.82rem;font-weight:600;flex:1;}
+.item-date{font-size:.7rem;color:var(--muted);}
+.item-days{font-size:.7rem;font-weight:700;padding:.1rem .4rem;border-radius:5px;white-space:nowrap;}
+.days-urgent{color:#ef4444;background:#fee2e2;}
+.days-warning{color:#c2410c;background:#ffedd5;}
+.days-caution{color:#854d0e;background:#fef9c3;}
+.days-safe{color:#15803d;background:#dcfce7;}
+.del-btn{background:none;border:none;cursor:pointer;font-size:.85rem;color:#ccc;padding:0 .2rem;}
+.del-btn:hover{color:#ef4444;}
+
+/* チェックボタン */
+.check-btn{width:100%;padding:.75rem;background:#ef4444;color:#fff;border:none;border-radius:10px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:.4rem;transition:all .2s;}
+.check-btn:hover{background:#dc2626;}
+.check-btn:disabled{background:#fca5a5;cursor:not-allowed;}
+
+/* サマリーカード */
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;}
+.sc{padding:.7rem .8rem;border-radius:10px;display:flex;flex-direction:column;gap:.2rem;}
+.sc-val{font-size:1.4rem;font-weight:800;line-height:1;}
+.sc-label{font-size:.64rem;color:var(--muted);}
+.sc-urgent{background:#fee2e2;}.sc-urgent .sc-val{color:#ef4444;}
+.sc-warning{background:#ffedd5;}.sc-warning .sc-val{color:#c2410c;}
+.sc-caution{background:#fef9c3;}.sc-caution .sc-val{color:#854d0e;}
+.sc-safe{background:#dcfce7;}.sc-safe .sc-val{color:#15803d;}
+
+/* LINE通知パネル */
+.line-panel{background:#06c755;border-radius:12px;padding:1rem;color:#fff;}
+.line-title{font-size:.72rem;font-weight:700;margin-bottom:.7rem;opacity:.9;}
+.line-msg-list{display:flex;flex-direction:column;gap:.5rem;max-height:320px;overflow-y:auto;}
+.line-msg{background:rgba(0,0,0,.15);border-radius:8px;padding:.55rem .65rem;font-size:.73rem;line-height:1.5;}
+.line-msg .lm-time{font-size:.6rem;opacity:.7;margin-bottom:.15rem;}
+.line-msg .lm-badge{font-size:.6rem;font-weight:700;padding:.1rem .35rem;border-radius:4px;margin-left:.4rem;}
+.lm-urgent{background:#ef4444;color:#fff;}
+.lm-warning{background:#f97316;color:#fff;}
+.lm-caution{background:#eab308;color:#000;}
+.line-empty{font-size:.75rem;opacity:.7;text-align:center;padding:1rem 0;}
+.line-footer{font-size:.63rem;opacity:.65;margin-top:.6rem;text-align:center;}
+
+/* アニメーション */
+.blink{animation:blink 1s step-end infinite;}
+@keyframes blink{50%{opacity:0}}
+.slide-in{animation:slideIn .35s ease forwards;}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+.shake{animation:shake .4s ease;}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>⏰ 賞味期限アラート 自動通知ツール</h1>
+    <p>登録商品の期限を毎日自動チェック → 期限3日以内でLINE自動通知</p>
+  </div>
+  <div class="demo-badge">🛒 スーパー向けデモ</div>
+</div>
+<div class="main">
+
+  <!-- 左：商品登録 -->
+  <div class="col-left">
+    <div class="card">
+      <div class="card-title">📦 商品登録</div>
+      <div class="form-row">
+        <label>商品名</label>
+        <input type="text" id="inp-name" placeholder="例：鶏もも肉 300g" maxlength="30">
+      </div>
+      <div class="form-row">
+        <label>賞味期限</label>
+        <input type="date" id="inp-date">
+      </div>
+      <div class="form-row">
+        <label>カテゴリ</label>
+        <select id="inp-cat">
+          <option value="🥩 肉類">🥩 肉類</option>
+          <option value="🥛 乳製品">🥛 乳製品</option>
+          <option value="🥬 野菜">🥬 野菜</option>
+          <option value="🐟 鮮魚">🐟 鮮魚</option>
+          <option value="🍱 惣菜">🍱 惣菜</option>
+          <option value="🥚 卵・豆腐">🥚 卵・豆腐</option>
+          <option value="🧃 飲料">🧃 飲料</option>
+        </select>
+      </div>
+      <button class="add-btn" onclick="addItem()">＋ 登録する</button>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 期限別サマリー</div>
+      <div class="summary-grid">
+        <div class="sc sc-urgent"><div class="sc-val" id="cnt-urgent">0</div><div class="sc-label">🔴 本日・期限切れ</div></div>
+        <div class="sc sc-warning"><div class="sc-val" id="cnt-warning">0</div><div class="sc-label">🟠 3日以内</div></div>
+        <div class="sc sc-caution"><div class="sc-val" id="cnt-caution">0</div><div class="sc-label">🟡 1週間以内</div></div>
+        <div class="sc sc-safe"><div class="sc-val" id="cnt-safe">0</div><div class="sc-label">🟢 余裕あり</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 中央：商品リスト -->
+  <div class="col-mid">
+    <div class="card" style="flex:1">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem;">
+        <div class="card-title" style="margin-bottom:0">🗂️ 管理商品リスト</div>
+        <button class="check-btn" id="checkBtn" onclick="runCheck()" style="width:auto;padding:.45rem .9rem;font-size:.78rem;border-radius:8px;">
+          🔔 今すぐチェック
+        </button>
+      </div>
+      <div class="item-list" id="itemList"></div>
+    </div>
+  </div>
+
+  <!-- 右：LINE通知 -->
+  <div class="col-right">
+    <div class="line-panel">
+      <div class="line-title">📱 LINE自動通知ログ</div>
+      <div class="line-msg-list" id="lineLog">
+        <div class="line-empty">チェックを実行するとここに<br>通知メッセージが届きます</div>
+      </div>
+      <div class="line-footer">🤖 毎朝7:00に自動実行</div>
+    </div>
+    <div class="card" style="font-size:.73rem;color:var(--muted);line-height:1.8;">
+      <div class="card-title">⚙️ 通知設定（デモ）</div>
+      <div>🔴 <b>即アラート</b>：本日期限 / 期限切れ</div>
+      <div>🟠 <b>要確認</b>：3日以内</div>
+      <div>🟡 <b>注意</b>：7日以内</div>
+      <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border);">
+        <b>通知先</b>：LINE公式アカウント<br>
+        <b>対象</b>：登録商品 全品目<br>
+        <b>実行</b>：毎朝7:00 自動
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+var today = new Date();
+today.setHours(0,0,0,0);
+
+// 初期サンプルデータ（今日基準の相対日付）
+function daysFromNow(d) {
+  var dt = new Date(today);
+  dt.setDate(dt.getDate() + d);
+  return dt.toISOString().slice(0,10);
+}
+
+var items = [
+  { id:1, name:'鶏もも肉 200g', date: daysFromNow(-1), cat:'🥩 肉類' },
+  { id:2, name:'絹ごし豆腐',    date: daysFromNow(0),  cat:'🥚 卵・豆腐' },
+  { id:3, name:'牛乳 1L',       date: daysFromNow(1),  cat:'🥛 乳製品' },
+  { id:4, name:'あじフライ',    date: daysFromNow(2),  cat:'🍱 惣菜' },
+  { id:5, name:'えのき茸',      date: daysFromNow(4),  cat:'🥬 野菜' },
+  { id:6, name:'サーモン刺身',  date: daysFromNow(6),  cat:'🐟 鮮魚' },
+  { id:7, name:'ヨーグルト',    date: daysFromNow(10), cat:'🥛 乳製品' },
+  { id:8, name:'卵 10個',       date: daysFromNow(14), cat:'🥚 卵・豆腐' },
+];
+var nextId = 9;
+
+// 今日のデフォルト日付セット
+(function() {
+  var dt = new Date(today);
+  dt.setDate(dt.getDate() + 2);
+  document.getElementById('inp-date').value = dt.toISOString().slice(0,10);
+})();
+
+function getDays(dateStr) {
+  var d = new Date(dateStr);
+  d.setHours(0,0,0,0);
+  return Math.round((d - today) / 86400000);
+}
+
+function getLevel(days) {
+  if (days <= 0) return 'urgent';
+  if (days <= 3) return 'warning';
+  if (days <= 7) return 'caution';
+  return 'safe';
+}
+
+function daysLabel(days) {
+  if (days < 0) return Math.abs(days) + '日超過';
+  if (days === 0) return '本日期限';
+  return 'あと' + days + '日';
+}
+
+function renderList() {
+  var sorted = items.slice().sort(function(a,b){ return getDays(a.date) - getDays(b.date); });
+  var html = '';
+  var cnt = {urgent:0, warning:0, caution:0, safe:0};
+
+  sorted.forEach(function(item) {
+    var days = getDays(item.date);
+    var lv = getLevel(days);
+    cnt[lv]++;
+    var dlabel = daysLabel(days);
+    html += '<div class="item-row ' + lv + '" id="row-' + item.id + '">' +
+      '<span class="dot dot-' + lv + '"></span>' +
+      '<span style="font-size:.75rem">' + item.cat + '</span>' +
+      '<span class="item-name">' + item.name + '</span>' +
+      '<span class="item-date">' + item.date.slice(5).replace('-','/') + '</span>' +
+      '<span class="item-days days-' + lv + '">' + dlabel + '</span>' +
+      '<button class="del-btn" onclick="delItem(' + item.id + ')">✕</button>' +
+    '</div>';
+  });
+
+  document.getElementById('itemList').innerHTML = html || '<div style="text-align:center;padding:2rem;color:var(--muted);font-size:.8rem;">商品を登録してください</div>';
+  document.getElementById('cnt-urgent').textContent  = cnt.urgent;
+  document.getElementById('cnt-warning').textContent = cnt.warning;
+  document.getElementById('cnt-caution').textContent = cnt.caution;
+  document.getElementById('cnt-safe').textContent    = cnt.safe;
+}
+
+function addItem() {
+  var name = document.getElementById('inp-name').value.trim();
+  var date = document.getElementById('inp-date').value;
+  var cat  = document.getElementById('inp-cat').value;
+  if (!name || !date) { alert('商品名と賞味期限を入力してください'); return; }
+  items.push({ id: nextId++, name: name, date: date, cat: cat });
+  document.getElementById('inp-name').value = '';
+  renderList();
+}
+
+function delItem(id) {
+  items = items.filter(function(it){ return it.id !== id; });
+  renderList();
+}
+
+var checking = false;
+function runCheck() {
+  if (checking) return;
+  checking = true;
+  var btn = document.getElementById('checkBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span style="display:inline-block;animation:spin .8s linear infinite">⟳</span> チェック中...';
+
+  // エフェクト：リスト行を順番にハイライト
+  var sorted = items.slice().sort(function(a,b){ return getDays(a.date)-getDays(b.date); });
+  var lineLog = document.getElementById('lineLog');
+  lineLog.innerHTML = '';
+
+  var i = 0;
+  var alertItems = sorted.filter(function(it){ return getLevel(getDays(it.date)) !== 'safe'; });
+  var safeItems  = sorted.filter(function(it){ return getLevel(getDays(it.date)) === 'safe'; });
+
+  function checkNext() {
+    if (i >= sorted.length) {
+      // 完了
+      setTimeout(function() {
+        btn.disabled = false;
+        btn.innerHTML = '🔔 再チェック';
+        checking = false;
+        // 完了メッセージ
+        if (alertItems.length === 0) {
+          lineLog.innerHTML = '<div class="line-msg slide-in"><div class="lm-time">' + now() + '</div>✅ 全商品、期限に問題ありません</div>';
+        }
+        // 最後に送信完了
+        var fin = document.createElement('div');
+        fin.className = 'line-msg slide-in';
+        fin.innerHTML = '<div class="lm-time">' + now() + '</div>📤 通知送信完了（' + alertItems.length + '件）';
+        lineLog.appendChild(fin);
+        lineLog.scrollTop = lineLog.scrollHeight;
+      }, 200);
+      return;
+    }
+
+    var item = sorted[i];
+    var days = getDays(item.date);
+    var lv   = getLevel(days);
+
+    // リスト行シェイク
+    var row = document.getElementById('row-' + item.id);
+    if (row) {
+      row.classList.add('shake');
+      setTimeout(function(){ row && row.classList.remove('shake'); }, 500);
+    }
+
+    // アラート対象はLINE通知に追加
+    if (lv !== 'safe') {
+      var badgeCls = lv === 'urgent' ? 'lm-urgent' : lv === 'warning' ? 'lm-warning' : 'lm-caution';
+      var icon = lv === 'urgent' ? '🚨' : lv === 'warning' ? '⚠️' : '⏰';
+      var msg = document.createElement('div');
+      msg.className = 'line-msg slide-in';
+      msg.innerHTML =
+        '<div class="lm-time">' + now() + '</div>' +
+        icon + ' <b>' + item.name + '</b>' +
+        '<span class="lm-badge ' + badgeCls + '">' + daysLabel(days) + '</span>' +
+        '<div style="font-size:.63rem;opacity:.8;margin-top:.15rem">' + item.cat + ' / ' + item.date + '</div>';
+      lineLog.appendChild(msg);
+      lineLog.scrollTop = lineLog.scrollHeight;
+    }
+
+    i++;
+    setTimeout(checkNext, 280);
+  }
+
+  checkNext();
+}
+
+function now() {
+  return new Date().toLocaleTimeString('ja-JP', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+// 初期描画
+renderList();
+
+// 3秒後に自動チェックデモ
+setTimeout(function() {
+  if (!checking) runCheck();
+}, 1500);
+</script>
+</body>
+</html>
